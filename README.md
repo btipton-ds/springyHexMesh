@@ -19,6 +19,12 @@ The project was developed under MS Visual Studio 2019 as a Make File Project. It
 
 If someone with a unix box wants to contribute by getting the linux environment working, I'm interested in talking.
 
+The source code is available under GPLv3. I don't plan to, or have the resources to, pursue violators. It's yours to use. 
+However, if you use it for commercial purposes I expect fare compensation for the value you received.
+
+I am also accepting donations through [GoFundMe.com ElectroFish](https://www.gofundme.com/f/electrofish)
+
+
 ### Prerequisites
 
 1 VulkanQuickStart and it's pre-requisites
@@ -58,6 +64,7 @@ Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c6
 ## Authors
 
 **Robert R (Bob) Tipton** - btipton <-> darkskyinnovation.com
+founder [Dark Sky Innovative Solutions](http://darkskyinnovation.com/index.html)
 
 ## License
 
