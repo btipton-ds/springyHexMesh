@@ -73,11 +73,14 @@ int main(int numArgs, char** args)
 	params.sharpAngleDeg = 45.0;
 
 	CMesherPtr mesher = make_shared<CMesher>(params, uiRoot);
+
 	mesher->reset();
 	bool fine = false;
 	if (!mesher->addFile(downloads, fine ? "Spinnaker Slots 5 - Fine.stl" : "Spinnaker Slots 5 - Coarse.stl"))
 		return 1;
-	mesher->run();
+
+	uiRoot->run();
+//	mesher->run();
 
 	return 0;
 }

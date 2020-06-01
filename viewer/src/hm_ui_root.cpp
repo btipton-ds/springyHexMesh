@@ -29,17 +29,77 @@ This file is part of the EnerMesh Project.
 
 #include <vk_defines.h>
 
+#include <vk_ui_button.h>
+#include <vk_ui_window.h>
+#include <vk_app.h>
+
 #include <hm_ui_root.h>
 
 using namespace std;
 using namespace HexahedralMesher;
 using namespace UI;
+using Button = VK::UI::Button;
+using ButtonPtr = VK::UI::ButtonPtr;
+using Rect = VK::UI::Rect;
 
 Root::Root() {
+	_app = make_shared<VK::VulkanApp>(1500, 900);
+	glfwSetWindowTitle(_app->getWindow(), "Springy Hex Mesh");
 
+	VK::UI::WindowPtr gui = make_shared<VK::UI::Window>(_app);
+	_app->setUiWindow(gui);
+	buildUi(gui);
 }
 
 Root::~Root() {
+}
+
+void Root::buildUi(const VK::UI::WindowPtr& win) {
+	glm::vec4 bkgColor(0.875f, 0.875f, 0.875f, 1);
+	uint32_t w = 120;
+	uint32_t h = 22;
+	uint32_t row = 0;
+
+	win->addButton(Button(_app, bkgColor, "Reset View", Rect(row, 0, row + h, w)))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			glm::mat4 xform = glm::mat4(1.0f);
+			_app->setModelToWorldTransform(xform);
+		}
+	});
+
+	row += h;
+	win->addButton(Button(_app, bkgColor, "Screenshot", Rect(row, 0, row + h, w)))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			const auto& swapChain = _app->getSwapChain();
+			const auto& images = swapChain._images;
+			const auto& image = images[_app->getSwapChainIndex()];
+
+			string path = "/Users/Bob/Documents/Projects/ElectroFish/HexMeshTests/";
+			image->saveImage(path + "screenshot.bmp");
+			image->saveImage(path + "screenshot.jpg");
+			image->saveImage(path + "screenshot.png");
+		}
+	});
+
+	row += h;
+	win->addButton(Button(_app, bkgColor, "Button 2", Rect(row, 0, row + h, w)));
+}
+
+bool Root::run() {
+	try {
+		_app->run();
+	}
+	catch (const std::exception& e) {
+		std::cerr << e.what() << std::endl;
+		return false;
+	}
+	catch (...) {
+		std::cerr << "unknown error\n";
+	}
+
+	return true;
 }
 
 void Root::report(const CMesher& mesher, const std::string& key) const {
@@ -48,4 +108,6 @@ void Root::report(const CMesher& mesher, const std::string& key) const {
 
 void Root::reportModelAdded(const CMesher& mesher, const CModelPtr& model) {
 	_models.push_back(model);
+
+	auto meshModel = _app->addSceneNode3D(model);
 }

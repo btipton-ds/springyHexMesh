@@ -1,15 +1,13 @@
-#pragma once
-
 /*
 
-This file is part of the EnerMesh Project.
+This file is part of the VulkanQuickStart Project.
 
-	The EnerMesh Project is free software: you can redistribute it and/or modify
+	The VulkanQuickStart Project is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	The EnerMesh Project is distributed in the hope that it will be useful,
+	The VulkanQuickStart Project is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
@@ -21,7 +19,7 @@ This file is part of the EnerMesh Project.
 	Under those circumstances, the author expects and may legally pursue a reasoble share of the income. To avoid the complexity of agreements and negotiation, the author makes
 	no specific demands in this regard. Compensation of roughly 1% of net or $5 per user license seems appropriate, but is not legally binding.
 
-	In lay terms, if you make a profit by using the EnerMesh Project (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
+	In lay terms, if you make a profit by using the VulkanQuickStart Project (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
 
 	Robert R Tipton - Author
 
@@ -29,41 +27,24 @@ This file is part of the EnerMesh Project.
 
 */
 
-#include <vk_defines.h>
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
 
-#include <memory>
-#include <vector>
+layout(binding = 0) uniform UniformBufferObject {
+    vec2 offset;
+    vec2 scale;
+	vec4 color;
+} ubo;
 
-#include <hm_forwardDeclarations.h>
+layout(location = 0) in vec2 inPosition;
+layout(location = 1) in vec2 inTexCoord;
 
-#include <meshProcessor.h>
+layout(location = 0) out vec2 fragTexCoord;
 
-namespace HexahedralMesher {
-
-	namespace UI {
-
-		class Root;
-		using RootPtr = std::shared_ptr<Root>;
-
-		class Root : public CMesher::Reporter {
-		public:
-
-			Root();
-			virtual ~Root();
-
-			bool run();
-
-			void report(const CMesher& mesher, const std::string& key) const override;
-			void reportModelAdded(const CMesher& mesher, const CModelPtr& model) override;
-
-		private:
-			void buildUi(const VK::UI::WindowPtr& win);
-
-			std::vector<CModelPtr> _models;
-
-			VK::VulkanAppPtr _app;
-		};
-
-
-	}
+void main() {
+    vec2 p = inPosition;
+    p = p * ubo.scale;
+    p = p + ubo.offset;
+    gl_Position = vec4(p, 0, 1);
+    fragTexCoord = inTexCoord;
 }

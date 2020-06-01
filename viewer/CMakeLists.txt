@@ -11,6 +11,9 @@ string(FIND ${PROJECT_BINARY_DIR} "Debug" isDebug)
 
 if (UNIX)
 	list(APPEND CMAKE_CXX_FLAGS "-pthread -fPIC")
+    set(GLSL_VALIDATOR "glslangValidator")
+    add_definitions(-DGLFW_EXPOSE_NATIVE_X11 -D_GCC)
+    set(GLFW_LIB_DIR "../../ThirdParty/glfw/src")
 
     if(NOT (isRelease EQUAL -1))
         set (CONFIG "WSL-GCC-Release")
@@ -20,14 +23,28 @@ if (UNIX)
         message(FATAL_ERROR "unknown PROJECT_BINARY_DIR")
     endif()
 else(UNIX)
+
+    set(GLSL_VALIDATOR "/VulkanSDK/1.2.135.0/Bin32/glslangValidator.exe")
+    add_definitions(-DGLFW_EXPOSE_NATIVE_WIN32)
+    set(GLFW_LIB_DIR "../../ThirdParty/glfw-3.3.2/lib-vc2019")
+
     if(NOT (isRelease EQUAL -1))
         set (CONFIG "x64-Release")
+        set(FREE_TYPE_LIB_DER "../../ThirdParty/freetype-2.10.2/x64/Release Static")
     elseif(NOT (isDebug EQUAL -1))
         set (CONFIG "x64-Debug")
+        set(FREE_TYPE_LIB_DER "../../ThirdParty/freetype-2.10.2/x64/Debug Static")
     else()
         message(FATAL_ERROR "unknown PROJECT_BINARY_DIR")
     endif()
 endif(UNIX)
+
+link_directories (
+"${GLFW_LIB_DIR}"
+"${FREE_TYPE_LIB_DER}"
+"../../triMesh/out/build/${CONFIG}/triMesh/"
+"../../triMesh/out/build/${CONFIG}/stlReader/"
+)
 
 include_directories(
 include 
@@ -56,12 +73,41 @@ add_executable ("springyHexMeshViewer"
  "src/viewer.cxx" 
   )
 
+find_package(Vulkan)
+
 target_link_libraries("springyHexMeshViewer" 
 	PUBLIC springyHexMeshLib 
     PUBLIC viewer
     PUBLIC VulkanQuickStartLib
+    PUBLIC Vulkan::Vulkan
 	PUBLIC triMesh
 	PUBLIC stlReader 
+    PUBLIC freetype
+    PUBLIC glfw3
 )
 
-# TODO: Add tests and install targets if needed.
+
+
+file(GLOB_RECURSE GLSL_SOURCE_FILES
+    "shaders/*.frag"
+    "shaders/*.vert"
+    )
+
+foreach(GLSL ${GLSL_SOURCE_FILES})
+  get_filename_component(RAW_FILE_NAME ${GLSL} NAME)
+  string(REPLACE "." "_" FILE_NAME "${RAW_FILE_NAME}")
+  set(SPIRV "${PROJECT_BINARY_DIR}/viewer/shaders/${FILE_NAME}.spv")
+  add_custom_command(
+    OUTPUT ${SPIRV}
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/viewer/shaders/"
+    COMMAND ${GLSL_VALIDATOR} -V ${GLSL} -o ${SPIRV}
+    DEPENDS ${GLSL})
+  list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+endforeach(GLSL)
+
+add_custom_target(
+    Shaders 
+    DEPENDS ${SPIRV_BINARY_FILES}
+    )
+
+add_dependencies(springyHexMeshViewer Shaders)
