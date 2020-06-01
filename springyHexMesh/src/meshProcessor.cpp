@@ -55,6 +55,11 @@ const std::string dumpPath(directorRoot + "HexMeshTests/dumps/");
 const std::string savePath(directorRoot + "HexMeshTests/");
 
 
+namespace {
+	class StopException {
+	};
+}
+
 Vector3d quadCenter(Vector3d const* const quadPts[4]) {
 	Vector3d ctr(0, 0, 0);
 	for (int i = 0; i < 4; i++)
@@ -72,7 +77,16 @@ CMesher::CMesher(const ParamsRec& params, const ReporterPtr& reporter)
 }
 
 CMesher::~CMesher() {
-	delete _thread;
+	if (_thread) {
+		_thread->join();
+		delete _thread;
+	}
+}
+
+void CMesher::checkStop() const {
+	if (_reporter && !_reporter->isRunning()) {
+		throw StopException();
+	}
 }
 
 void CMesher::reset() {
@@ -432,6 +446,7 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 
 	const int numThreads = 8;
 	for (int i = 0; i < steps; i++) {
+		checkStop();
 		double maxMoveArr[numThreads], avgMoveArr[numThreads];
 		double maxEnergyArr[numThreads], avgEnergyArr[numThreads];
 		for (int j = 0; j < numThreads; j++) {
@@ -778,49 +793,54 @@ void CMesher::makeInitialGrid() {
 }
 
 ErrorCode CMesher::run() {
-	init();
+	try {
+		init();
 
-	if (!read(savePath + "postFit.grid")) {
-		if (!read(savePath + "preFit.grid")) {
-			if (!read(savePath + "initial.grid")) {
-				makeInitialGrid();
+		if (!read(savePath + "postFit.grid")) {
+			if (!read(savePath + "preFit.grid")) {
+				if (!read(savePath + "initial.grid")) {
+					makeInitialGrid();
+				}
+
+				minimizeMesh(50, -1);
+
+				_dumpObj.write("preFit", 0);
+				_dumpObj.write("preFitReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
+				_dumpObj.write("preFitReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
+
+				save(savePath + "preFit.grid");
+				cout << "Saved state to preFit.grid\n";
 			}
+			cout.flush();
 
-			minimizeMesh(50, -1);
+			putCornersOnSharpEdges();
+			// Need to save EVERYTHING!! The polyline numbers are different after reading!
+			save(savePath + "postFit.grid");
 
-			_dumpObj.write("preFit", 0);
-			_dumpObj.write("preFitReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
-			_dumpObj.write("preFitReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
+			_dumpObj.write("postFit", 0);
+			_dumpObj.write("postFitReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
+			_dumpObj.write("postFitReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
+			_dumpObj.writeFaces("clampedFaces", 2, CLAMP_VERT | CLAMP_EDGE | CLAMP_FIXED);
+			_dumpObj.writeFaces("bounds", 4, CLAMP_PARALLEL | CLAMP_PERPENDICULAR | CLAMP_FIXED);
 
-			save(savePath + "preFit.grid");
-			cout << "Saved state to preFit.grid\n";
 		}
-		cout.flush();
 
-		putCornersOnSharpEdges();
-		// Need to save EVERYTHING!! The polyline numbers are different after reading!
-		save(savePath + "postFit.grid");
+		GridVert::clearHistory();
+		minimizeMesh(25, -1);
+		GridVert::writeHistory(savePath + "vertHistory.csv");
 
-		_dumpObj.write("postFit", 0);
-		_dumpObj.write("postFitReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
-		_dumpObj.write("postFitReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
-		_dumpObj.writeFaces("clampedFaces", 2, CLAMP_VERT | CLAMP_EDGE | CLAMP_FIXED);
-		_dumpObj.writeFaces("bounds", 4, CLAMP_PARALLEL | CLAMP_PERPENDICULAR | CLAMP_FIXED);
+		_dumpObj.write("alignedMeshMin", 0);
+		_dumpObj.write("alignedMeshMinReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
+		_dumpObj.write("alignedMeshMinReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
+		_dumpObj.writeFaces("alignedFacesMinReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
+		_dumpObj.writeFaces("alignedFacesMinReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
+
+		divideMesh(1);
 
 	}
-
-	GridVert::clearHistory();
-	minimizeMesh(25, -1);
-	GridVert::writeHistory(savePath + "vertHistory.csv");
-
-	_dumpObj.write("alignedMeshMin", 0);
-	_dumpObj.write("alignedMeshMinReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
-	_dumpObj.write("alignedMeshMinReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
-	_dumpObj.writeFaces("alignedFacesMinReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
-	_dumpObj.writeFaces("alignedFacesMinReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
-
-	divideMesh(1);
-
+	catch (StopException) {
+		return NO_ERR;
+	}
 	return NO_ERR;
 }
 
@@ -848,3 +868,6 @@ void CMesher::Reporter::reportModelAdded(const CMesher& mesher, const CModelPtr&
 
 }
 
+bool CMesher::Reporter::isRunning() const {
+	return true;
+}

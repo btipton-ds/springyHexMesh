@@ -84,7 +84,13 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 	});
 
 	row += h;
-	win->addButton(Button(_app, bkgColor, "Button 2", Rect(row, 0, row + h, w)));
+	win->addButton(Button(_app, bkgColor, "Quit", Rect(row, 0, row + h, w)))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			_isRunning = false; // This stops the mesher
+			_app->stop();
+		}
+	});
 }
 
 bool Root::run() {
@@ -110,4 +116,8 @@ void Root::reportModelAdded(const CMesher& mesher, const CModelPtr& model) {
 	_models.push_back(model);
 
 	auto meshModel = _app->addSceneNode3D(model);
+}
+
+bool Root::isRunning() const {
+	return _isRunning;
 }

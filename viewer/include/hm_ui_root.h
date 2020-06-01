@@ -56,10 +56,13 @@ namespace HexahedralMesher {
 
 			void report(const CMesher& mesher, const std::string& key) const override;
 			void reportModelAdded(const CMesher& mesher, const CModelPtr& model) override;
+			bool isRunning() const override;
+
 
 		private:
 			void buildUi(const VK::UI::WindowPtr& win);
 
+			bool _isRunning = true;
 			std::vector<CModelPtr> _models;
 
 			VK::VulkanAppPtr _app;

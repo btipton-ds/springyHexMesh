@@ -79,11 +79,13 @@ namespace HexahedralMesher {
 		public:
 			virtual void report(const CMesher& mesher, const std::string& key) const;
 			virtual void reportModelAdded(const CMesher& mesher, const CModelPtr& model);
+			virtual bool isRunning() const;
 		};
 
 		CMesher(const ParamsRec& params, const ReporterPtr& reporter);
 		virtual ~CMesher();
 
+		void checkStop() const;
 		void reset();
 		bool addFile(const std::string& path, const std::string& filename);
 		void addModel(const std::shared_ptr<CModel>& modelPtr);

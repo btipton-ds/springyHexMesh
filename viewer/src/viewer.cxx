@@ -80,8 +80,8 @@ int main(int numArgs, char** args)
 		return 1;
 
 	// GLFW events only work from the main thread. So the GUI needs to be the main thread.
+	mesher->runAsThread();
 	uiRoot->run();
-//	mesher->run();
 
 	return 0;
 }
