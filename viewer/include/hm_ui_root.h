@@ -51,6 +51,7 @@ namespace HexahedralMesher {
 			Root();
 			virtual ~Root();
 
+			// GLFW events only work from the main thread. So the GUI needs to be the main thread.
 			bool run();
 
 			void report(const CMesher& mesher, const std::string& key) const override;

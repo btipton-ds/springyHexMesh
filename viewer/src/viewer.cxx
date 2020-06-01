@@ -79,6 +79,7 @@ int main(int numArgs, char** args)
 	if (!mesher->addFile(downloads, fine ? "Spinnaker Slots 5 - Fine.stl" : "Spinnaker Slots 5 - Coarse.stl"))
 		return 1;
 
+	// GLFW events only work from the main thread. So the GUI needs to be the main thread.
 	uiRoot->run();
 //	mesher->run();
 
