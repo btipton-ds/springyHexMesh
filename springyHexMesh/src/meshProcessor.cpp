@@ -71,6 +71,10 @@ CMesher::CMesher(const ParamsRec& params, const ReporterPtr& reporter)
 {
 }
 
+CMesher::~CMesher() {
+	delete _thread;
+}
+
 void CMesher::reset() {
 	_modelPtrs.clear();
 }
@@ -726,7 +730,15 @@ void CMesher::putCornersOnSharpEdges() {
 		cout << "Bad mesh after diagonal split\n";
 }
 
-ErrorCode CMesher::run() {
+void CMesher::runStat(CMesher* self) {
+	self->run();
+}
+
+void CMesher::runAsThread() {
+	_thread  = new thread(&runStat, this);
+}
+
+void CMesher::init() {
 #if 0
 	_params.minGapSize = findMinimumGap();
 #else
@@ -746,23 +758,32 @@ ErrorCode CMesher::run() {
 	_grid.setBounds(_params.bounds);
 	_reporter->report(*this, "initialized");
 
+}
+
+void CMesher::makeInitialGrid() {
+	_grid.init(_params.bounds);
+	clampBoundaries();
+	//					splitCellsAroundPolylines();
+	//					_dumpObj.write("polylineSplit");
+	snapToCusps();
+	_dumpObj.write("cuspSnap");
+
+	for (int i = 0; i < 0; i++) {
+		// TODO make the a CSplitter method
+		CSplitter div(_grid);
+		div.splitAll();
+	}
+	_dumpObj.write("postSplit");
+	save(savePath + "initial.grid");
+}
+
+ErrorCode CMesher::run() {
+	init();
+
 	if (!read(savePath + "postFit.grid")) {
 		if (!read(savePath + "preFit.grid")) {
 			if (!read(savePath + "initial.grid")) {
-				_grid.init(_params.bounds);
-				clampBoundaries();
-//					splitCellsAroundPolylines();
-//					_dumpObj.write("polylineSplit");
-				snapToCusps();
-				_dumpObj.write("cuspSnap");
-
-				for (int i = 0; i < 0; i++) {
-					// TODO make the a CSplitter method
-					CSplitter div(_grid);
-					div.splitAll();
-				}
-				_dumpObj.write("postSplit");
-				save(savePath + "initial.grid");
+				makeInitialGrid();
 			}
 
 			minimizeMesh(50, -1);

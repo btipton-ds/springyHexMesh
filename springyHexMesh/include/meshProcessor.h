@@ -82,6 +82,7 @@ namespace HexahedralMesher {
 		};
 
 		CMesher(const ParamsRec& params, const ReporterPtr& reporter);
+		virtual ~CMesher();
 
 		void reset();
 		bool addFile(const std::string& path, const std::string& filename);
@@ -121,9 +122,15 @@ namespace HexahedralMesher {
 			return _modelPtrs[modelIdx];
 		}
 
+		void runAsThread();
 		ErrorCode run();
 
 	private:
+		static void runStat(CMesher* self);
+
+		void init();
+		void makeInitialGrid();
+
 		double findMinimumGap() const;
 		size_t findVertFaces(size_t vertIdx, std::set<GridFace>& faceSet) const;
 
@@ -147,6 +154,7 @@ namespace HexahedralMesher {
 		void dumpModelObj(const string& filenameRoot) const;
 		void dumpModelSharpEdgesObj(const string& filenameRoot, double sinAngle) const;
 
+		std::thread* _thread = nullptr;
 		ParamsRec _params;
 		ReporterPtr _reporter;
 		Grid _grid;
