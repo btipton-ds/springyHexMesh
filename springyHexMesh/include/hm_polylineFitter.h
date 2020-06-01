@@ -35,14 +35,11 @@ This file is part of the EnerMesh Project.
 #include <map>
 
 #include <hm_types.h>
+#include <hm_forwardDeclarations.h>
 #include <hm_model.h>
 #include <triMesh.h>
 
 namespace HexahedralMesher {
-
-	class CMesher;
-	class Grid;
-	struct ParamsRec;
 
 	class CPolylineFitter {
 	public:

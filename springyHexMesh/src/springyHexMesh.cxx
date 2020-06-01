@@ -37,6 +37,9 @@ This file is part of the EnerMesh Project.
 using namespace std;
 using namespace HexahedralMesher;
 
+class TestReporter;
+using TestReporterPtr = shared_ptr<TestReporter>;
+
 class TestReporter : public CMesher::Reporter {
 public:
 	void report(const CMesher& mesher, const std::string& key) const override {
@@ -57,7 +60,7 @@ int main(int numArgs, char **args)
 	params.minEdgeLength = 0.1;
 	params.sharpAngleDeg = 45.0;
 
-	TestReporter reporter;
+	TestReporterPtr reporter = make_shared<TestReporter>();
 	CMesher mesher(params, reporter);
 	mesher.reset();
 	bool fine = false;

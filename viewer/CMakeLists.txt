@@ -35,6 +35,9 @@ include
 "../../triMesh/stlReader/include" 
 "../../VulkanQuickStart/VulkanQuickStart/include" 
 "../springyHexMesh/include"
+"../../ThirdParty/glm-0.9.9.5/glm"
+"../../ThirdParty/glfw-3.3.2/include"
+"/VulkanSDK/1.2.135.0/Include"
 )
 
 # Add source to this project's executable.
@@ -45,12 +48,17 @@ link_directories (
 "../../VulkanQuickStart/out/build/${CONFIG}/VulkanQuickStart/" 
 )
 
+add_library ("viewer"
+ "src/hm_ui_root.cpp"
+  )
+
 add_executable ("springyHexMeshViewer"
-	"src/viewer.cxx" 
-)
+ "src/viewer.cxx" 
+  )
 
 target_link_libraries("springyHexMeshViewer" 
 	PUBLIC springyHexMeshLib 
+    PUBLIC viewer
     PUBLIC VulkanQuickStartLib
 	PUBLIC triMesh
 	PUBLIC stlReader 

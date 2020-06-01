@@ -33,6 +33,7 @@ include_directories(
 include 
 "../../triMesh/triMesh/include" 
 "../../triMesh/stlReader/include" 
+"../../VulkanQuickStart/VulkanQuickStart/include" 
 )
 
 # Add source to this project's executable.

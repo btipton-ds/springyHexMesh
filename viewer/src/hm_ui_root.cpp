@@ -29,55 +29,23 @@ This file is part of the EnerMesh Project.
 
 #include <vk_defines.h>
 
-#include <iostream>
-#include <fstream>
-
-#include <meshProcessor.h>
-
-#include <fstream>
-
-#include "vk_app.h"
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
-#include "vk_model.h"
-#include "vk_modelObj.h"
-#include <vk_pipelineUi.h>
-#include <vk_ui_button.h>
-#include <vk_ui_window.h>
-
-#include <triMesh.h>
-#include <readStl.h>
-
 #include <hm_ui_root.h>
 
 using namespace std;
 using namespace HexahedralMesher;
+using namespace UI;
 
-int main(int numArgs, char** args)
-{
-	string downloads = "../../../../test_data/";
+Root::Root() {
 
-	UI::RootPtr uiRoot = make_shared<UI::Root>();
-	
-	ParamsRec params;
+}
 
-	params.bounds.clear();
-	params.bounds.merge(Vector3d(-2, 0, 0));
-	params.bounds.merge(Vector3d(6, 6, 16));
-	params.maxEdgeLength = 1;
-	params.minEdgeLength = 0.1;
-	params.sharpAngleDeg = 45.0;
+Root::~Root() {
+}
 
-	CMesherPtr mesher = make_shared<CMesher>(params, uiRoot);
-	mesher->reset();
-	bool fine = false;
-	if (!mesher->addFile(downloads, fine ? "Spinnaker Slots 5 - Fine.stl" : "Spinnaker Slots 5 - Coarse.stl"))
-		return 1;
-	mesher->run();
+void Root::report(const CMesher& mesher, const std::string& key) const {
 
-	return 0;
+}
+
+void Root::reportModelAdded(const CMesher& mesher, const CModelPtr& model) {
+	_models.push_back(model);
 }

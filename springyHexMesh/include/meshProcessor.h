@@ -51,6 +51,7 @@ All rights reserved
 #include <hm_model.h>
 
 #include <hm_types.h>
+#include <hm_forwardDeclarations.h>
 #include <hm_paramsRec.h>
 #include <hm_gridVert.h>
 #include <hm_gridFace.h>
@@ -62,18 +63,25 @@ using namespace std;
 
 namespace HexahedralMesher {
 	
+	class CMesher;
+	using CMesherPtr = std::shared_ptr<CMesher>;
+
 	class CMesher {
 	public:
 		struct PolylineRec;
 		struct CellPolylineRec;
 		struct CellMeshRec;
 
+		class Reporter;
+		using ReporterPtr = std::shared_ptr<Reporter>;
+
 		class Reporter {
 		public:
-			virtual void report(const CMesher& mesher, const std::string& key) const = 0;
+			virtual void report(const CMesher& mesher, const std::string& key) const;
+			virtual void reportModelAdded(const CMesher& mesher, const CModelPtr& model);
 		};
 
-		CMesher(const ParamsRec& params, const Reporter& reporter);
+		CMesher(const ParamsRec& params, const ReporterPtr& reporter);
 
 		void reset();
 		bool addFile(const std::string& path, const std::string& filename);
@@ -140,7 +148,7 @@ namespace HexahedralMesher {
 		void dumpModelSharpEdgesObj(const string& filenameRoot, double sinAngle) const;
 
 		ParamsRec _params;
-		const Reporter& _reporter;
+		ReporterPtr _reporter;
 		Grid _grid;
 		DumpObj _dumpObj;
 		std::vector<CModelPtr> _modelPtrs;

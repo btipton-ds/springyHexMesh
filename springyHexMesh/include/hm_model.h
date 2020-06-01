@@ -65,5 +65,4 @@ namespace HexahedralMesher {
 		void createCuspsAndSplitPolylines();
 	};
 
-	using CModelPtr = std::shared_ptr<CModel>;
 }
