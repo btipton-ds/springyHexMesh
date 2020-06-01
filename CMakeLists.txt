@@ -7,3 +7,4 @@ project ("springyHexMesh")
 
 # Include sub-projects.
 add_subdirectory ("springyHexMesh" )
+add_subdirectory ("viewer" )
