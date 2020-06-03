@@ -34,6 +34,7 @@ This file is part of the EnerMesh Project.
 #include <vk_app.h>
 
 #include <hm_ui_root.h>
+#include <vk_model.h>
 
 using namespace std;
 using namespace HexahedralMesher;
@@ -56,11 +57,11 @@ Root::~Root() {
 
 void Root::buildUi(const VK::UI::WindowPtr& win) {
 	glm::vec4 bkgColor(0.875f, 0.875f, 0.875f, 1);
-	uint32_t w = 120;
-	uint32_t h = 22;
+	uint32_t w = 150;
+	uint32_t h = 24;
 	uint32_t row = 0;
 
-	win->addButton(Button(_app, bkgColor, "Reset View", Rect(row, 0, row + h, w)))->
+	win->addButton(bkgColor, "Reset View", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
 			glm::mat4 xform = glm::mat4(1.0f);
@@ -69,7 +70,17 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 	});
 
 	row += h;
-	win->addButton(Button(_app, bkgColor, "Screenshot", Rect(row, 0, row + h, w)))->
+	win->addButton(bkgColor, "Show/Hide model", Rect(row, 0, row + h, w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			if (!_models.empty()) {
+				_models.front()._sceneNode->toggleVisibility();
+			}
+		}
+	});
+
+	row += h;
+	win->addButton(bkgColor, "Screenshot", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
 			const auto& swapChain = _app->getSwapChain();
@@ -84,7 +95,7 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 	});
 
 	row += h;
-	win->addButton(Button(_app, bkgColor, "Quit", Rect(row, 0, row + h, w)))->
+	win->addButton(bkgColor, "Quit", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
 			_isRunning = false; // This stops the mesher
@@ -113,9 +124,8 @@ void Root::report(const CMesher& mesher, const std::string& key) const {
 }
 
 void Root::reportModelAdded(const CMesher& mesher, const CModelPtr& model) {
-	_models.push_back(model);
-
-	auto meshModel = _app->addSceneNode3D(model);
+	ModelRec rec = { model, _app->addSceneNode3D(model) };
+	_models.push_back(rec);
 }
 
 bool Root::isRunning() const {

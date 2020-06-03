@@ -75,12 +75,12 @@ int main(int numArgs, char** args)
 	CMesherPtr mesher = make_shared<CMesher>(params, uiRoot);
 
 	mesher->reset();
-	bool fine = false;
+	bool fine = true;
 	if (!mesher->addFile(downloads, fine ? "Spinnaker Slots 5 - Fine.stl" : "Spinnaker Slots 5 - Coarse.stl"))
 		return 1;
 
 	// GLFW events only work from the main thread. So the GUI needs to be the main thread.
-	mesher->runAsThread();
+//	mesher->runAsThread();
 	uiRoot->run();
 
 	return 0;

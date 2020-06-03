@@ -63,7 +63,12 @@ namespace HexahedralMesher {
 			void buildUi(const VK::UI::WindowPtr& win);
 
 			bool _isRunning = true;
-			std::vector<CModelPtr> _models;
+
+			struct ModelRec {
+				CModelPtr _model;
+				VK::SceneNode3DPtr _sceneNode;
+			};
+			std::vector<ModelRec> _models;
 
 			VK::VulkanAppPtr _app;
 		};

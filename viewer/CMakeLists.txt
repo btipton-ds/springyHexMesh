@@ -87,10 +87,12 @@ target_link_libraries("springyHexMeshViewer"
 )
 
 
+set(VQS_SHADER_DIR "../../VulkanQuickStart/VulkanQuickStart")
+
 
 file(GLOB_RECURSE GLSL_SOURCE_FILES
-    "shaders/*.frag"
-    "shaders/*.vert"
+    "${VQS_SHADER_DIR}/shaders/*.frag"
+    "${VQS_SHADER_DIR}/shaders/*.vert"
     )
 
 foreach(GLSL ${GLSL_SOURCE_FILES})
