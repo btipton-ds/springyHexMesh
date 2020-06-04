@@ -31,10 +31,11 @@ This file is part of the EnerMesh Project.
 
 #include <vk_ui_button.h>
 #include <vk_ui_window.h>
+#include <vk_model.h>
+#include <vk_pipeline3D.h>
 #include <vk_app.h>
 
 #include <hm_ui_root.h>
-#include <vk_model.h>
 
 using namespace std;
 using namespace HexahedralMesher;
@@ -50,6 +51,11 @@ Root::Root() {
 	VK::UI::WindowPtr gui = make_shared<VK::UI::Window>(_app);
 	_app->setUiWindow(gui);
 	buildUi(gui);
+
+	_pipelineStlShaded = _app->addPipelineWithSource<VK::Pipeline3D>("3d_shaded", "shaders/shader_vert.spv", "shaders/shader_frag.spv");
+	_pipelineStlWireframe = _app->addPipelineWithSource<VK::Pipeline3D>("3d_wireframe", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
+	_pipelineStlWireframe->setPolygonMode(VK_POLYGON_MODE_LINE);
+	_pipelineStlWireframe->toggleVisiblity();
 }
 
 Root::~Root() {
@@ -70,11 +76,21 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 	});
 
 	row += h;
+	win->addButton(bkgColor, "Toggle Wireframe", Rect(row, 0, row + h, w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			_pipelineStlShaded->toggleVisiblity();
+			_pipelineStlWireframe->toggleVisiblity();
+		}
+	});
+
+	row += h;
 	win->addButton(bkgColor, "Show/Hide model", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
 			if (!_models.empty()) {
-				_models.front()._sceneNode->toggleVisibility();
+				_models.front()._sceneNodeShaded->toggleVisibility();
+				_models.front()._scenNodeWf->toggleVisibility();
 			}
 		}
 	});
@@ -124,7 +140,14 @@ void Root::report(const CMesher& mesher, const std::string& key) const {
 }
 
 void Root::reportModelAdded(const CMesher& mesher, const CModelPtr& model) {
-	ModelRec rec = { model, _app->addSceneNode3D(model) };
+	VK::ModelPtr uiModelShaded = VK::Model::create(_pipelineStlShaded, model);
+	_pipelineStlShaded->addSceneNode(uiModelShaded);
+
+	VK::ModelPtr uiModelWf = VK::Model::create(_pipelineStlWireframe, model);
+	_pipelineStlWireframe->addSceneNode(uiModelWf);
+
+	ModelRec rec = { model, uiModelShaded, uiModelWf };
+
 	_models.push_back(rec);
 }
 

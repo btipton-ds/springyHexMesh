@@ -37,6 +37,7 @@ This file is part of the EnerMesh Project.
 #include <hm_forwardDeclarations.h>
 
 #include <meshProcessor.h>
+#include <vk_app.h>
 
 namespace HexahedralMesher {
 
@@ -66,10 +67,11 @@ namespace HexahedralMesher {
 
 			struct ModelRec {
 				CModelPtr _model;
-				VK::SceneNode3DPtr _sceneNode;
+				VK::SceneNode3DPtr _sceneNodeShaded, _scenNodeWf;
 			};
 			std::vector<ModelRec> _models;
 
+			VK::Pipeline3DPtr _pipelineStlShaded, _pipelineStlWireframe;
 			VK::VulkanAppPtr _app;
 		};
 
