@@ -67,11 +67,11 @@ link_directories (
 
 add_library ("viewer"
  "src/hm_ui_root.cpp"
-  )
+   "src/hm_ui_grid.cpp" "src/hm_ui_modelEdges.cpp")
 
 add_executable ("springyHexMeshViewer"
  "src/viewer.cxx" 
-  )
+   "src/hm_ui_grid.cpp")
 
 find_package(Vulkan)
 

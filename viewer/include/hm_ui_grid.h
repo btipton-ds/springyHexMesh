@@ -31,46 +31,22 @@ This file is part of the SpringHexMesh Project.
 
 #include <tm_defines.h>
 
-#include <vector>
-#include <map>
-
-#include <hm_types.h>
 #include <hm_forwardDeclarations.h>
-#include <hm_model.h>
-#include <triMesh.h>
 
 namespace HexahedralMesher {
+	namespace UI {
 
-	class CPolylineFitter {
-	public:
-		CPolylineFitter(CMesher& mesher, size_t meshIdx, size_t polylineNumber);
+		class Root;
+		using RootPtr = std::shared_ptr<Root>;
 
-		size_t doFit(std::set<size_t>& cellsToSplit);
+		class GridNode {
+		public:
+			GridNode(Root& root);
+			~GridNode();
 
-	private:
-		struct FaceHit;
-
-		size_t findStartingCornerIndex() const;
-		bool findCellFaceHits(size_t cornerIdx, std::map<size_t, std::vector<FaceHit>>& hits,
-			std::set<size_t>& cellsToSplit) const;
-		bool fitCells(const std::map<size_t, std::vector<FaceHit>>& hits, size_t& cornerIdx, size_t& plIdx, 
-			std::set<size_t>& cellsToSplit);
-		size_t findPierces(size_t cellIdx, CellVertPos corner, std::vector<FaceHit>& hits) const;
-		size_t polylineIntersectsTri(size_t startIdx, const Vector3d* tri[3], RayHit& hit) const;
-		CellVertPos findClosestUnclampedCorner(size_t cellIdx, CellVertPos ignorePos, const FaceHit& faceHit) const;
-		void putUnclampedCornerOnPolyline(size_t cellIdx, CellVertPos corner, const FaceHit& faceHit);
-		void addPolylineEndToClamped();
-		void getClampedCells(std::set<size_t>& cellsToSplit);
-
-		CMesher& _mesher;
-		size_t _meshIdx;
-		size_t _polylineNum;
-		Grid& _grid;
-		const ParamsRec& _params;
-		const CModelPtr& _modelPtr;
-		const TriMesh::CPolyLine& _polyline;
-
-		std::vector<size_t> _clampedVertIndices;
-	};
-
+		private:
+			Root& _root;
+			HexahedralMesher::GridConstPtr _grid;
+		};
+	}
 }

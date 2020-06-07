@@ -1,13 +1,13 @@
 /*
 
-This file is part of the EnerMesh Project.
+This file is part of the SpringHexMesh Project.
 
-	The EnerMesh Project is free software: you can redistribute it and/or modify
+	The SpringHexMesh Project is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
-	The EnerMesh Project is distributed in the hope that it will be useful,
+	The SpringHexMesh Project is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
@@ -19,7 +19,7 @@ This file is part of the EnerMesh Project.
 	Under those circumstances, the author expects and may legally pursue a reasoble share of the income. To avoid the complexity of agreements and negotiation, the author makes
 	no specific demands in this regard. Compensation of roughly 1% of net or $5 per user license seems appropriate, but is not legally binding.
 
-	In lay terms, if you make a profit by using the EnerMesh Project (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
+	In lay terms, if you make a profit by using the SpringHexMesh Project (violating the spirit of Open Source Software), I expect a reasonable share for my efforts.
 
 	Robert R Tipton - Author
 
@@ -33,6 +33,7 @@ This file is part of the EnerMesh Project.
 #include <vk_ui_window.h>
 #include <vk_model.h>
 #include <vk_pipeline3D.h>
+#include <hm_ui_modelEdges.h>
 #include <vk_app.h>
 
 #include <hm_ui_root.h>
@@ -44,7 +45,9 @@ using Button = VK::UI::Button;
 using ButtonPtr = VK::UI::ButtonPtr;
 using Rect = VK::UI::Rect;
 
-Root::Root() {
+Root::Root(const CMesherPtr& mesher)
+	: _mesher(mesher)
+{
 	_app = make_shared<VK::VulkanApp>(1500, 900);
 	glfwSetWindowTitle(_app->getWindow(), "Springy Hex Mesh");
 
@@ -52,18 +55,26 @@ Root::Root() {
 	_app->setUiWindow(gui);
 	buildUi(gui);
 
-	_pipelineStlShaded = _app->addPipelineWithSource<VK::Pipeline3D>("3d_shaded", "shaders/shader_vert.spv", "shaders/shader_frag.spv");
-	_pipelineStlWireframe = _app->addPipelineWithSource<VK::Pipeline3D>("3d_wireframe", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
+	_pipelineStlShaded = _app->addPipelineWithSource<VK::Pipeline3D>("model_shaded", "shaders/shader_vert.spv", "shaders/shader_frag.spv");
+
+	_pipelineStlWireframe = _app->addPipelineWithSource<VK::Pipeline3D>("model_wireframe", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
 	_pipelineStlWireframe->setPolygonMode(VK_POLYGON_MODE_LINE);
 	_pipelineStlWireframe->toggleVisiblity();
+
+	_pipelineEdges = _app->addPipelineWithSource<VK::Pipeline3D>("model_edges", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
+	_pipelineEdges->setPolygonMode(VK_POLYGON_MODE_LINE);
+	_pipelineEdges->setToplogy(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+	_pipelineEdges->setDepthTestEnabled(false);
+//	_pipelineEdges->toggleVisiblity();
 }
 
 Root::~Root() {
 }
 
+
 void Root::buildUi(const VK::UI::WindowPtr& win) {
 	glm::vec4 bkgColor(0.875f, 0.875f, 0.875f, 1);
-	uint32_t w = 150;
+	uint32_t w = 200;
 	uint32_t h = 24;
 	uint32_t row = 0;
 
@@ -76,21 +87,29 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 	});
 
 	row += h;
+	win->addButton(bkgColor, "Toggle shaded", Rect(row, 0, row + h, w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			if (!_models.empty()) {
+				_models.front()._sceneNodeShaded->toggleVisibility();
+			}
+		}
+	});
+
+	row += h;
 	win->addButton(bkgColor, "Toggle Wireframe", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
-			_pipelineStlShaded->toggleVisiblity();
 			_pipelineStlWireframe->toggleVisiblity();
 		}
 	});
 
 	row += h;
-	win->addButton(bkgColor, "Show/Hide model", Rect(row, 0, row + h, w))->
+	win->addButton(bkgColor, "Toggle Edges", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
 			if (!_models.empty()) {
-				_models.front()._sceneNodeShaded->toggleVisibility();
-				_models.front()._scenNodeWf->toggleVisibility();
+				_pipelineEdges->toggleVisiblity();
 			}
 		}
 	});
@@ -146,7 +165,10 @@ void Root::reportModelAdded(const CMesher& mesher, const CModelPtr& model) {
 	VK::ModelPtr uiModelWf = VK::Model::create(_pipelineStlWireframe, model);
 	_pipelineStlWireframe->addSceneNode(uiModelWf);
 
-	ModelRec rec = { model, uiModelShaded, uiModelWf };
+	ModelEdgesPtr uiModelEdges = ModelEdges::create(_pipelineEdges, model);
+	_pipelineEdges->addSceneNode(uiModelEdges);
+
+	ModelRec rec = { model, uiModelShaded, uiModelWf, uiModelEdges };
 
 	_models.push_back(rec);
 }

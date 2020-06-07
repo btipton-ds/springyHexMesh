@@ -29,60 +29,22 @@ This file is part of the SpringHexMesh Project.
 
 #include <vk_defines.h>
 
-#include <iostream>
-#include <fstream>
-
-#include <meshProcessor.h>
-
-#include <fstream>
-
-#include "vk_app.h"
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
-#include "vk_model.h"
-#include "vk_modelObj.h"
-#include <vk_pipelineUi.h>
-#include <vk_ui_button.h>
-#include <vk_ui_window.h>
-
-#include <triMesh.h>
-#include <readStl.h>
-
-#include <hm_ui_root.h>
+#include <hm_ui_grid.h>
 
 using namespace std;
 using namespace HexahedralMesher;
 
-int main(int numArgs, char** args)
-{
-	string downloads = "../../../../test_data/";
+#if 0
 
-	ParamsRec params;
+UI::Grid::Grid(const UI::RootPtr& root) 
+	: _root(root)
+{}
 
-	params.bounds.clear();
-	params.bounds.merge(Vector3d(-2, 0, 0));
-	params.bounds.merge(Vector3d(6, 6, 16));
-	params.maxEdgeLength = 1;
-	params.minEdgeLength = 0.1;
-	params.sharpAngleDeg = 45.0;
-
-	CMesherPtr mesher = make_shared<CMesher>(params);
-	mesher->reset();
-
-	UI::RootPtr uiRoot = make_shared<UI::Root>(mesher);
-	mesher->setReporter(uiRoot);
-
-	bool fine = true;
-	if (!mesher->addFile(downloads, fine ? "Spinnaker Slots 5 - Fine.stl" : "Spinnaker Slots 5 - Coarse.stl"))
-		return 1;
-
-	// GLFW events only work from the main thread. So the GUI needs to be the main thread.
-//	mesher->runAsThread();
-	uiRoot->run();
-
-	return 0;
+UI::Grid::~Grid() {
 }
+
+void UI::Grid::setGrid(const HexahedralMesher::GridPtr& grid) {
+	_grid = grid;
+}
+
+#endif

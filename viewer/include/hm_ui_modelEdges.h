@@ -36,49 +36,57 @@ This file is part of the SpringHexMesh Project.
 
 #include <hm_forwardDeclarations.h>
 
+#include <tm_edge.h>
 #include <meshProcessor.h>
+#include <vk_pipelineSceneNode3D.h>
 #include <vk_app.h>
 
 namespace HexahedralMesher {
 
 	namespace UI {
 
-		class GridNode;
-		using GridNodePtr = std::shared_ptr<GridNode>;
+		class ModelEdges;
+		using ModelEdgesPtr = std::shared_ptr<ModelEdges>;
 
-		class Root;
-		using RootPtr = std::shared_ptr<Root>;
-
-		class Root : public CMesher::Reporter {
+		class ModelEdges : public VK::PipelineSceneNode3D {
 		public:
+			using BoundingBox = CBoundingBox3D<float>;
+			using VertexType = VK::Pipeline3D::VertexType;
 
-			Root(const CMesherPtr& mesher);
-			virtual ~Root();
+			static inline ModelEdgesPtr create(const VK::PipelineBasePtr& ownerPipeline, const CModelPtr& model) {
+				return std::shared_ptr<ModelEdges>(new ModelEdges(ownerPipeline, model));
+			}
 
-			// GLFW events only work from the main thread. So the GUI needs to be the main thread.
-			bool run();
+			void addCommands(VkCommandBuffer cmdBuff, VkPipelineLayout pipelineLayout, size_t swapChainIndex) const override;
+			void buildImageInfoList(std::vector<VkDescriptorImageInfo>& imageInfoList) const override;
+			BoundingBox getBounds() const override;
 
-			void report(const CMesher& mesher, const std::string& key) const override;
-			void reportModelAdded(const CMesher& mesher, const CModelPtr& model) override;
-			bool isRunning() const override;
+			inline const VK::Buffer& getVertexBuffer() const {
+				return _vertexBuffer;
+			}
 
+			inline const VK::Buffer& getIndexBuffer() const {
+				return _indexBuffer;
+			}
 
-		private:
-			void buildUi(const VK::UI::WindowPtr& win);
+			void createDescriptorPool() override;
+			void createDescriptorSets() override;
+			void createUniformBuffers() override;
 
-			bool _isRunning = true;
+		protected:
+			ModelEdges(const VK::PipelineBasePtr& ownerPipeline);
+			ModelEdges(const VK::PipelineBasePtr& ownerPipeline, const CModelPtr& model);
 
-			struct ModelRec {
-				CModelPtr _model;
-				VK::SceneNode3DPtr _sceneNodeShaded, _scenNodeWf, _sceneNodeEdges;
-			};
-			std::vector<ModelRec> _models;
+			void loadModel(const CModelPtr& model);
 
-			CMesherPtr _mesher;
-			VK::Pipeline3DPtr _pipelineStlShaded, _pipelineStlWireframe, _pipelineEdges;
-			VK::VulkanAppPtr _app;
+			void createVertexBuffer();
+			void createIndexBuffer();
+
+			BoundingBox _bounds;
+			std::vector<VertexType> _vertices;
+			std::vector<uint32_t> _indices;
+			VK::Buffer _vertexBuffer, _indexBuffer;
 		};
-
 
 	}
 }
