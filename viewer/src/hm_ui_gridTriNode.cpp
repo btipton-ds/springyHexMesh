@@ -78,7 +78,7 @@ typename UI::GridTriNode::BoundingBox UI::GridTriNode::getBounds() const {
 void UI::GridTriNode::createDescriptorPool() {
 	auto app = _ownerPipeline->getApp();
 	const auto& swap = app->getSwapChain();
-	auto devCon = app->getDeviceContext()->device_;
+	auto devCon = app->getDeviceContext()->_device;
 
 	std::array<VkDescriptorPoolSize, 2> poolSizes = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -99,7 +99,7 @@ void UI::GridTriNode::createDescriptorPool() {
 
 void UI::GridTriNode::createDescriptorSets() {
 	auto app = _ownerPipeline->getApp();
-	auto dc = app->getDeviceContext()->device_;
+	auto dc = app->getDeviceContext()->_device;
 
 	const auto& swap = app->getSwapChain();
 	size_t swapChainSize = (uint32_t)swap._vkImages.size();

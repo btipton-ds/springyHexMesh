@@ -136,7 +136,7 @@ Root::Root(const CMesherPtr& mesher)
 	buildUi(gui);
 
 	_pipelineTriShaded = _app->addPipelineWithSource<VK::Pipeline3D>("model_shaded", "shaders/shader_vert.spv", "shaders/shader_frag.spv");
-#if 0
+#if 1
 	_pipelineGridFaceBounds = _app->addPipelineWithSource<VK::Pipeline3D>("grid_face_bounds", "shaders/shader_vert.spv", "shaders/shader_grid_wireframe_frag.spv");
 	_pipelineGridFaceBounds->setPolygonMode(VK_POLYGON_MODE_LINE);
 #endif
@@ -249,7 +249,7 @@ void Root::report(const CMesher& mesher, const std::string& key) {
 	if (key == "grid_topol_change") {
 		buildBuffers();
 	} else if (key == "grid_verts_changed") {
-		updateVerts();
+//		updateVerts();
 	}
 }
 

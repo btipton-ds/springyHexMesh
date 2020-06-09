@@ -785,13 +785,12 @@ void CMesher::init() {
 	cout << "Max divisions      : " << _params.calcMaxDivisions() << "\n";
 	cout << "Sharp angle        : " << _params.sharpAngleDeg << " deg\n";
 
+#if DUMP_OBJ
 	dumpModelObj("model");
 	const double sinEdgeAngle = sin(_params.sharpAngleDeg * EIGEN_PI / 180.0);
 	dumpModelSharpEdgesObj("sharp edges", sinEdgeAngle);
-
+#endif
 	_grid->setBounds(_params.bounds);
-	_reporter->report(*this, "grid_topol_change");
-
 }
 
 void CMesher::makeInitialGrid() {
@@ -827,7 +826,7 @@ ErrorCode CMesher::run() {
 					makeInitialGrid();
 				}
 				_reporter->report(*this, "grid_topol_change");
-
+				return NO_ERR;
 				minimizeMesh(50, -1);
 
 #if DUMP_OBJ
