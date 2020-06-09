@@ -245,6 +245,8 @@ bool Root::run() {
 void Root::report(const CMesher& mesher, const std::string& key) {
 	if (key == "update_grid") {
 		buildBuffers();
+	} else if (key == "grid_verts_changed") {
+		updateVerts();
 	}
 }
 
@@ -269,6 +271,7 @@ void Root::buildPosNormBuffer() {
 	_tris.clear();
 	_faceToTriMap.clear();
 	map<SearchableTri, size_t> triMap;
+	set<SearchableFace> faceSet;
 
 	grid.iterateCells([&](size_t cellId)->bool {
 		const auto& cell = grid.getCell(cellId);
@@ -319,9 +322,7 @@ void Root::buildPosNormBuffer() {
 				faceTris[i] = iter->second;
 			}
 
-			size_t faceIdx[4];
-			face.getVertIndices(grid, faceIdx);
-			SearchableFace sf(face, faceIdx);
+			SearchableFace sf(face.getSearchableFace(grid));
 
 			_faceToTriMap.insert(make_pair(sf, faceTris));
 		}
@@ -332,6 +333,10 @@ void Root::buildPosNormBuffer() {
 	_posNormVertBuffer->create(verts, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
 
+void Root::updateVerts() {
+
+}
+
 void Root::addGridFaces() {
 	vector<uint32_t> tris;
 
@@ -340,10 +345,7 @@ void Root::addGridFaces() {
 	grid.iterateCells([&](size_t cellId)->bool { 
 		const auto& cell = grid.getCell(cellId);
 		for (FaceNumber fn = BOTTOM; fn < FN_UNKNOWN; fn++) {
-			GridFace face(cellId, fn);
-			size_t idx[4];
-			face.getVertIndices(grid, idx);
-			SearchableFace sf(face, idx);
+			SearchableFace sf(cell.getSearchableFace(fn));
 			auto iter = _faceToTriMap.find(sf);
 			if (iter != _faceToTriMap.end()) {
 				const auto& triPair = iter->second;

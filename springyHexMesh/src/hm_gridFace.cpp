@@ -104,8 +104,26 @@ namespace HexahedralMesher {
 	}
 
 
+	SearchableFace GridFace::getSearchableFace(const Grid& grid) const {
+		size_t idx[4];
+		getVertIndices(grid, idx);
+		return SearchableFace(*this, idx);
+	}
+
 	SearchableFace::SearchableFace(const GridFace& face, const size_t indices[4])
 		: GridFace(face)
+	{
+		set<size_t> verts;
+		for (int i = 0; i < 4; i++)
+			verts.insert(indices[i]);
+
+		int count = 0;
+		for (size_t vertIdx : verts)
+			_sortedIndices[count++] = vertIdx;
+	}
+
+	SearchableFace::SearchableFace(size_t cellId, FaceNumber face, const size_t indices[4])
+		: GridFace(cellId, face)
 	{
 		set<size_t> verts;
 		for (int i = 0; i < 4; i++)

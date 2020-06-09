@@ -204,9 +204,7 @@ namespace HexahedralMesher {
 		for (size_t cellIdx : cellIndices) {
 			const GridCell& cell = _grid.getCell(cellIdx);
 			for (FaceNumber fn = BOTTOM; fn < FN_UNKNOWN; fn++) {
-				size_t idx[4];
-				cell.getFaceIndices(fn, idx);
-				faceSet.insert(SearchableFace(GridFace(cellIdx, fn), idx));
+				faceSet.insert(cell.getSearchableFace(fn));
 			}
 		}
 	}
@@ -214,9 +212,7 @@ namespace HexahedralMesher {
 	void DumpObj::gatherFaces(const std::vector<GridFace> faces, std::set<SearchableFace>& faceSet) const {
 		for (const GridFace& face: faces) {
 			const GridCell& cell = _grid.getCell(face.getCellIdx());
-			size_t idx[4];
-			cell.getFaceIndices(face.getFaceNumber(), idx);
-			faceSet.insert(SearchableFace(face, idx));
+			faceSet.insert(cell.getSearchableFace(face.getFaceNumber()));
 		}
 	}
 

@@ -562,6 +562,8 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 
 		cout << i << ": Max move= " << maxMove << ", avgMove: " << avgMove << ", maxEnergy: " << maxEnergy << ", avgEnergy: " << avgEnergy << "\n";
 
+		_reporter->report(*this, "grid_verts_changed");
+
 #if DUMP_OBJ
 		if (!filename.empty() && (i % 5) == 0) {
 			string str;

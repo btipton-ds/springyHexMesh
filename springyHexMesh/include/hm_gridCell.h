@@ -87,6 +87,7 @@ namespace HexahedralMesher {
 		void setRestEdgeLength(int i, double val);
 		void setDefaultRestEdgeLengths(const Grid& grid);
 
+		SearchableFace getSearchableFace(FaceNumber faceNumber) const;
 		void getFaceIndices(FaceNumber faceNumber, size_t indices[4]) const;
 		void getFaceTriIndices(FaceNumber faceNumber, size_t tri[2][3]) const;
 		void getFacePoints(const Grid& grid, FaceNumber faceNumber, const Vector3d* points[4]) const;

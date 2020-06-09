@@ -525,6 +525,12 @@ namespace HexahedralMesher {
 		}
 	}
 
+	SearchableFace GridCell::getSearchableFace(FaceNumber faceNumber) const {
+		size_t idx[4];
+		getFaceIndices(faceNumber, idx);
+		return SearchableFace(_id, faceNumber, idx);
+	}
+
 	void GridCell::getFaceTriIndices(FaceNumber faceNumber, size_t tri[2][3]) const {
 		size_t verts[4];
 		getFaceIndices(faceNumber, verts);

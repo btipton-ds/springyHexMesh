@@ -38,6 +38,8 @@ namespace HexahedralMesher {
 	class GridBase;
 	class Grid;
 
+	class SearchableFace;
+
 	class GridFace {
 	public:
 		static bool sameVerts(size_t verts0[4], size_t verts1[4]);
@@ -53,6 +55,8 @@ namespace HexahedralMesher {
 		void getTriIndices(const Grid& grid, size_t tri[2][3]) const;
 		void getTriVertPtrs(const Grid& grid, const Vector3d* tri[2][3]) const;
 		bool sameVerts(const Grid& grid, const GridFace& other) const;
+
+		SearchableFace getSearchableFace(const Grid& grid) const;
 
 		bool operator < (const GridFace& rhs) const;
 		bool operator == (const GridFace& rhs) const;
@@ -93,9 +97,13 @@ namespace HexahedralMesher {
 
 	class SearchableFace : public GridFace {
 	public:
-		SearchableFace(const GridFace& face, const size_t indices[4]);
 		bool operator < (const SearchableFace& rhs) const;
 	private:
+		friend class GridFace;
+		friend class GridCell;
+
+		SearchableFace(const GridFace& face, const size_t indices[4]);
+		SearchableFace(size_t cellIdx, FaceNumber face, const size_t indices[4]);
 		size_t _sortedIndices[4];
 	};
 
