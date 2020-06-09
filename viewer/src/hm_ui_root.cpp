@@ -136,7 +136,10 @@ Root::Root(const CMesherPtr& mesher)
 	buildUi(gui);
 
 	_pipelineTriShaded = _app->addPipelineWithSource<VK::Pipeline3D>("model_shaded", "shaders/shader_vert.spv", "shaders/shader_frag.spv");
-
+#if 0
+	_pipelineGridFaceBounds = _app->addPipelineWithSource<VK::Pipeline3D>("grid_face_bounds", "shaders/shader_vert.spv", "shaders/shader_grid_wireframe_frag.spv");
+	_pipelineGridFaceBounds->setPolygonMode(VK_POLYGON_MODE_LINE);
+#endif
 	_pipelineTriWire = _app->addPipelineWithSource<VK::Pipeline3D>("model_wireframe", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
 	_pipelineTriWire->setPolygonMode(VK_POLYGON_MODE_LINE);
 	_pipelineTriWire->toggleVisiblity();

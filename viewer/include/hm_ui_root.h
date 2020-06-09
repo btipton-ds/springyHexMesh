@@ -93,8 +93,8 @@ namespace HexahedralMesher {
 			CMesherPtr _mesher;
 
 			VK::VulkanAppPtr _app;
-			VK::Pipeline3DPtr _pipelineTriShaded, _pipelineTriWire, _pipelineLines;
-			GridTriNodePtr _allGridTriShaded, _allGridTriWf;
+			VK::Pipeline3DPtr _pipelineTriShaded, _pipelineTriWire, _pipelineLines, _pipelineGridFaceBounds;
+			GridTriNodePtr _allGridTriShaded, _allGridTriWf, _allGridFaceBounds;
 
 			BoundingBox _bbox;
 			std::vector<std::array<uint32_t, 3>> _tris;
