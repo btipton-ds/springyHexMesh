@@ -68,7 +68,7 @@ namespace HexahedralMesher {
 		: _mesher(mesher)
 		, _meshIdx(meshIdx)
 		, _polylineNum(polylineNumber)
-		, _grid(mesher.getGrid())
+		, _grid(*mesher.getGrid())
 		, _params(mesher.getParams())
 		, _modelPtr(mesher.getModelPtr(meshIdx))
 		, _polyline(_modelPtr->_polyLines[polylineNumber])

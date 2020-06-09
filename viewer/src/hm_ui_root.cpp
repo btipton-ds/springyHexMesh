@@ -36,6 +36,7 @@ This file is part of the SpringHexMesh Project.
 #include <hm_ui_modelEdges.h>
 #include <vk_app.h>
 
+#include <hm_ui_gridTriNode.h>
 #include <hm_ui_root.h>
 
 using namespace std;
@@ -44,6 +45,85 @@ using namespace UI;
 using Button = VK::UI::Button;
 using ButtonPtr = VK::UI::ButtonPtr;
 using Rect = VK::UI::Rect;
+
+namespace {
+
+	struct comparePosNormFunc {
+		inline bool operator()(const VK::Vertex3_PNCf& lhs, const VK::Vertex3_PNCf& rhs) const {
+			for (int i = 0; i < 3; i++) {
+				if (lhs.pos[i] < rhs.pos[i])
+					return true;
+				else if (lhs.pos[i] > rhs.pos[i])
+					return false;
+			}
+
+			for (int i = 0; i < 3; i++) {
+				if (fabs(lhs.norm[i]) < fabs(rhs.norm[i]))
+					return true;
+				else if (fabs(lhs.norm[i]) > fabs(rhs.norm[i]))
+					return false;
+			}
+			return false;
+		}
+	};
+
+	struct SearchableTri {
+		inline SearchableTri(const array<uint32_t, 3>& tri) {
+			_idx = tri;
+			sort(_idx.begin(), _idx.end());
+		}
+
+		inline bool operator < (const SearchableTri& lhs) const {
+			for (size_t i = 0; i < 3; i++) {
+				if (_idx[i] < lhs._idx[i])
+					return true;
+				else if (_idx[i] > lhs._idx[i])
+					return false;
+			}
+			return false;
+		}
+
+		array<uint32_t, 3> _idx;
+	};
+
+	glm::vec3 colorOf(const GridVert& vert) {
+		glm::vec3 color;
+		switch (vert.getClampType()) {
+		default:
+			color = { 1, 1, 1 };
+			break;
+		case CLAMP_FIXED:
+			color = { 0.5f, 0.5f, 1.0f };
+			break;
+		case CLAMP_PARALLEL:
+			color = { 1.0f, 0.5f, 0.5f };
+			break;
+		case CLAMP_PERPENDICULAR:
+			color = { 0.5f, 1.0f, 0.5f };
+			break;
+		case CLAMP_VERT:
+			color = { 1.0f, 0.0f, 0.0f };
+			break;
+		case CLAMP_EDGE:
+			color = { 0.0f, 1.0f, 0.0f };
+			break;
+		case CLAMP_TRI:
+			color = { 0.0f, 0.0f, 1.0f };
+			break;
+		case CLAMP_CELL_EDGE_CENTER:
+			color = { 1.0f, 0.0f, 1.0f };
+			break;
+		case CLAMP_CELL_FACE_CENTER:
+			color = { 1.0f, 1.0f, 0.0f };
+			break;
+		case CLAMP_GRID_TRI_PLANE:
+			color = { 1.0f, 1.0f, 0.5f };
+			break;
+		}
+
+		return color;
+	}
+}
 
 Root::Root(const CMesherPtr& mesher)
 	: _mesher(mesher)
@@ -55,17 +135,17 @@ Root::Root(const CMesherPtr& mesher)
 	_app->setUiWindow(gui);
 	buildUi(gui);
 
-	_pipelineStlShaded = _app->addPipelineWithSource<VK::Pipeline3D>("model_shaded", "shaders/shader_vert.spv", "shaders/shader_frag.spv");
+	_pipelineTriShaded = _app->addPipelineWithSource<VK::Pipeline3D>("model_shaded", "shaders/shader_vert.spv", "shaders/shader_frag.spv");
 
-	_pipelineStlWireframe = _app->addPipelineWithSource<VK::Pipeline3D>("model_wireframe", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
-	_pipelineStlWireframe->setPolygonMode(VK_POLYGON_MODE_LINE);
-	_pipelineStlWireframe->toggleVisiblity();
+	_pipelineTriWire = _app->addPipelineWithSource<VK::Pipeline3D>("model_wireframe", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
+	_pipelineTriWire->setPolygonMode(VK_POLYGON_MODE_LINE);
+	_pipelineTriWire->toggleVisiblity();
 
-	_pipelineEdges = _app->addPipelineWithSource<VK::Pipeline3D>("model_edges", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
-	_pipelineEdges->setPolygonMode(VK_POLYGON_MODE_LINE);
-	_pipelineEdges->setToplogy(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
-	_pipelineEdges->setDepthTestEnabled(false);
-//	_pipelineEdges->toggleVisiblity();
+	_pipelineLines = _app->addPipelineWithSource<VK::Pipeline3D>("model_edges", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
+	_pipelineLines->setPolygonMode(VK_POLYGON_MODE_LINE);
+	_pipelineLines->setToplogy(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+	_pipelineLines->setDepthTestEnabled(false);
+//	_pipelineLines->toggleVisiblity();
 }
 
 Root::~Root() {
@@ -87,7 +167,7 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 	});
 
 	row += h;
-	win->addButton(bkgColor, "Toggle shaded", Rect(row, 0, row + h, w))->
+	win->addButton(bkgColor, "Toggle model", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
 			if (!_models.empty()) {
@@ -97,10 +177,18 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 	});
 
 	row += h;
+	win->addButton(bkgColor, "Toggle Shaded", Rect(row, 0, row + h, w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			_pipelineTriShaded->toggleVisiblity();
+		}
+	});
+
+	row += h;
 	win->addButton(bkgColor, "Toggle Wireframe", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
-			_pipelineStlWireframe->toggleVisiblity();
+			_pipelineTriWire->toggleVisiblity();
 		}
 	});
 
@@ -109,7 +197,7 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
 			if (!_models.empty()) {
-				_pipelineEdges->toggleVisiblity();
+				_pipelineLines->toggleVisiblity();
 			}
 		}
 	});
@@ -154,19 +242,141 @@ bool Root::run() {
 	return true;
 }
 
-void Root::report(const CMesher& mesher, const std::string& key) const {
+void Root::report(const CMesher& mesher, const std::string& key) {
+	if (key == "update_grid") {
+		buildBuffers();
+	}
+}
 
+void Root::buildBuffers() {
+	buildPosNormBuffer();
+	addGridFaces();
+	//		grid.buildBuffers();
+}
+
+void Root::buildPosNormBuffer() {
+	const auto& grid = *_mesher->getGrid();
+	if (grid.numCells() == 0)
+		return;
+
+	_bbox.clear();
+
+	_posNormVertBuffer = make_shared<VK::Buffer>(_app->getDeviceContext());
+
+	vector<VK::Vertex3_PNCf> verts;
+	map<VK::Vertex3_PNCf, size_t, comparePosNormFunc> vertMap;
+
+	_tris.clear();
+	_faceToTriMap.clear();
+	map<SearchableTri, size_t> triMap;
+
+	grid.iterateCells([&](size_t cellId)->bool {
+		const auto& cell = grid.getCell(cellId);
+
+		for (FaceNumber fn = BOTTOM; fn < FN_UNKNOWN; fn++) {
+			GridFace face(cellId, fn);
+			const Vector3d* triPtsArr[2][3];
+			face.getTriVertPtrs(grid, triPtsArr);
+
+			size_t triIdxArr[2][3];
+			face.getTriIndices(grid, triIdxArr);
+
+			array<size_t, 2> faceTris;
+			for (int i = 0; i < 2; i++) {
+				const auto triPts = triPtsArr[i];
+				const auto triIdx = triIdxArr[i];
+				auto norm = triangleNormal(triPts);
+
+				array<uint32_t, 3> tri;
+				for (int j = 0; j < 3; j++) {
+					size_t vertIdx = triIdx[j];
+					const auto& gVert = grid.getVert(vertIdx);
+					VK::Vertex3_PNCf vert;
+					const auto& pt = gVert.getPt();
+					vert.pos = { (float)pt[0], (float)pt[1], (float)pt[2] };
+
+					vert.norm = { (float)norm[0], (float)norm[1], (float)norm[2] };
+					vert.norm = glm::normalize(vert.norm);
+
+					vert.color = colorOf(gVert);
+					auto vertIter = vertMap.find(vert);
+					if (vertIter == vertMap.end()) {
+						size_t idx = verts.size();
+						verts.push_back(vert);
+						_bbox.merge(Vector3f(vert.pos[0], vert.pos[1], vert.pos[2]));
+						vertIter = vertMap.insert(make_pair(vert, idx)).first;
+					}
+					tri[j] = (uint32_t)vertIter->second;
+				}
+
+				SearchableTri st(tri);
+				auto iter = triMap.find(st);
+				if (iter == triMap.end()) {
+					size_t idx = _tris.size();
+					_tris.push_back(tri);
+					iter = triMap.insert(make_pair(st, idx)).first;
+				}
+				faceTris[i] = iter->second;
+			}
+
+			size_t faceIdx[4];
+			face.getVertIndices(grid, faceIdx);
+			SearchableFace sf(face, faceIdx);
+
+			_faceToTriMap.insert(make_pair(sf, faceTris));
+		}
+
+		return true;
+	});
+
+	_posNormVertBuffer->create(verts, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+}
+
+void Root::addGridFaces() {
+	vector<uint32_t> tris;
+
+	const auto& grid = *_mesher->getGrid();
+
+	grid.iterateCells([&](size_t cellId)->bool { 
+		const auto& cell = grid.getCell(cellId);
+		for (FaceNumber fn = BOTTOM; fn < FN_UNKNOWN; fn++) {
+			GridFace face(cellId, fn);
+			size_t idx[4];
+			face.getVertIndices(grid, idx);
+			SearchableFace sf(face, idx);
+			auto iter = _faceToTriMap.find(sf);
+			if (iter != _faceToTriMap.end()) {
+				const auto& triPair = iter->second;
+				for (size_t triIdx : triPair) {
+					const auto& tri = _tris[triIdx];
+					for (size_t idx : tri) {
+						tris.push_back((uint32_t)idx);
+					}
+				}
+			}
+		}
+
+		return true;
+	});
+
+	_allGridTriShaded = make_shared<GridTriNode>(this, _pipelineTriShaded);
+	_allGridTriShaded->setFaceDrawList(tris);
+	_pipelineTriShaded->addSceneNode(_allGridTriShaded);
+
+	_allGridTriWf = make_shared<GridTriNode>(this, _pipelineTriWire);
+	_allGridTriWf->setFaceDrawList(tris);
+	_pipelineTriWire->addSceneNode(_allGridTriWf);
 }
 
 void Root::reportModelAdded(const CMesher& mesher, const CModelPtr& model) {
-	VK::ModelPtr uiModelShaded = VK::Model::create(_pipelineStlShaded, model);
-	_pipelineStlShaded->addSceneNode(uiModelShaded);
+	VK::ModelPtr uiModelShaded = VK::Model::create(_pipelineTriShaded, model);
+	_pipelineTriShaded->addSceneNode(uiModelShaded);
 
-	VK::ModelPtr uiModelWf = VK::Model::create(_pipelineStlWireframe, model);
-	_pipelineStlWireframe->addSceneNode(uiModelWf);
+	VK::ModelPtr uiModelWf = VK::Model::create(_pipelineTriWire, model);
+	_pipelineTriWire->addSceneNode(uiModelWf);
 
-	ModelEdgesPtr uiModelEdges = ModelEdges::create(_pipelineEdges, model);
-	_pipelineEdges->addSceneNode(uiModelEdges);
+	ModelEdgesPtr uiModelEdges = ModelEdges::create(_pipelineLines, model);
+	_pipelineLines->addSceneNode(uiModelEdges);
 
 	ModelRec rec = { model, uiModelShaded, uiModelWf, uiModelEdges };
 

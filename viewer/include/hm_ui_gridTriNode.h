@@ -32,21 +32,37 @@ This file is part of the SpringHexMesh Project.
 #include <tm_defines.h>
 
 #include <hm_forwardDeclarations.h>
+#include <vk_pipeline3D.h>
+#include <vk_pipelineSceneNode3D.h>
+#include <vk_buffer.h>
 
 namespace HexahedralMesher {
 	namespace UI {
 
 		class Root;
-		using RootPtr = std::shared_ptr<Root>;
 
-		class GridNode {
+		class GridTriNode : public VK::PipelineSceneNode3D {
 		public:
-			GridNode(Root& root);
-			~GridNode();
+			GridTriNode(Root* root, VK::Pipeline3DPtr& ownerPipeline);
+			~GridTriNode();
+
+			void setFaceDrawList(const std::vector<uint32_t>& indices);
+
+			void addCommands(VkCommandBuffer cmdBuff, VkPipelineLayout pipelineLayout, size_t swapChainIndex) const override;
+			void buildImageInfoList(std::vector<VkDescriptorImageInfo>& imageInfoList) const override;
+			BoundingBox getBounds() const override;
+			void createDescriptorPool() override;
+			void createDescriptorSets() override;
+			void createUniformBuffers() override;
 
 		private:
-			Root& _root;
-			HexahedralMesher::GridConstPtr _grid;
+			uint32_t _numIndices;
+			Root* _root;
+			VK::Buffer _indices;
 		};
+
+		using GridTriNodePtr = std::shared_ptr<GridTriNode>;
+
 	}
 }
+

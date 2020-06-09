@@ -54,6 +54,7 @@ const std::string directorRoot("/Users/Bob/Documents/Projects/ElectroFish/");
 const std::string dumpPath(directorRoot + "HexMeshTests/dumps/");
 const std::string savePath(directorRoot + "HexMeshTests/");
 
+#define DUMP_OBJ 0
 
 namespace {
 	class StopException {
@@ -70,8 +71,8 @@ Vector3d quadCenter(Vector3d const* const quadPts[4]) {
 
 CMesher::CMesher(const ParamsRec& params)
 	: _params(params)
-	, _grid(*this)
-	, _dumpObj(_grid, dumpPath)
+	, _grid(make_shared<Grid>(*this))
+	, _dumpObj(*_grid, dumpPath)
 {
 }
 
@@ -116,7 +117,7 @@ void CMesher::save(const string& path) const {
 }
 
 void CMesher::save(ostream& out) const {
-	if (!_grid.verify()) {
+	if (!_grid->verify()) {
 		cout << "Failed to save because grid could not be verifid.\n";
 		return;
 	}
@@ -125,7 +126,7 @@ void CMesher::save(ostream& out) const {
 		
 	_params.save(out);
 
-	_grid.save(out);
+	_grid->save(out);
 
 	out << "NM: " << _modelPtrs.size() << "\n";
 	for (size_t i = 0; i < _modelPtrs.size(); i++) {
@@ -154,8 +155,8 @@ bool CMesher::read(std::istream& in) {
 		return false;
 
 
-	Grid newGrid(*this);
-	if (!newGrid.read(in))
+	GridPtr newGrid = make_shared<Grid>(*this);
+	if (!newGrid->read(in))
 		return false;
 
 	size_t numModels;
@@ -179,9 +180,9 @@ bool CMesher::read(std::istream& in) {
 
 void CMesher::splitCellsAroundPolylines() {
 		map<size_t, set<size_t>> cellPolylineHits;
-		_grid.iterateCells([&](size_t cellId)->bool {
-			const auto& cell = _grid.getCell(cellId);
-			auto bb = cell.calcBBox(_grid);
+		_grid->iterateCells([&](size_t cellId)->bool {
+			const auto& cell = _grid->getCell(cellId);
+			auto bb = cell.calcBBox(*_grid);
 			for (const auto& modelPtr : _modelPtrs) {
 				for (size_t polylineNum = 0; polylineNum < modelPtr->_polyLines.size(); polylineNum++) {
 					const auto& verts = modelPtr->_polyLines[polylineNum].getVerts();
@@ -208,7 +209,7 @@ void CMesher::splitCellsAroundPolylines() {
 
 		if (maxInCell > 1) {
 			for (int i = 0; i < 2; i++) {
-				CSplitter splitter(_grid);
+				CSplitter splitter(*_grid);
 				for (size_t cellId : cellsToSplit) {
 					splitter.splitCellFull(cellId);
 				}
@@ -229,12 +230,12 @@ void CMesher::snapToCusps() {
 			BoundingBox bb(cuspPt);
 			double maxEdgeLength = _params.calcMaxEdgeLength();
 			bb.grow(1.5 * maxEdgeLength);
-			vector<size_t> vertIndices = _grid.findVerts(bb);
+			vector<size_t> vertIndices = _grid->findVerts(bb);
 			double minDist = 1.5 * maxEdgeLength;
 			size_t bestSnap = stm1;
 			Vector3d snapPt;
 			for (size_t gridVertIdx : vertIndices) {
-				const auto& gridPt = _grid.getVert(gridVertIdx).getPt();
+				const auto& gridPt = _grid->getVert(gridVertIdx).getPt();
 				auto v = gridPt - cuspPt;
 				double dist = fabs(v[0]) + fabs(v[1]) + fabs(v[2]);
 				if (dist < minDist) {
@@ -244,9 +245,9 @@ void CMesher::snapToCusps() {
 				}
 			}
 			if (bestSnap != stm1) {
-				auto& vert = _grid.getVert(bestSnap);
+				auto& vert = _grid->getVert(bestSnap);
 				vert.setPoint(snapPt);
-				vert.setClamp(_grid, TopolRef::createVert(modelIdx, bestSnap));
+				vert.setClamp(*_grid, TopolRef::createVert(modelIdx, bestSnap));
 			} else
 				cout << "Failed to snap cusp.\n";
 		}
@@ -295,11 +296,11 @@ double CMesher::findMinimumGap() const {
 
 size_t CMesher::findVertFaces(size_t vertIdx, set<GridFace>& faceSet) const {
 	faceSet.clear();
-	const auto& vert = _grid.getVert(vertIdx);
+	const auto& vert = _grid->getVert(vertIdx);
 	size_t numCells = vert.getNumCells();
 	for (size_t i = 0; i < numCells; i++) {
 		size_t cellIdx = vert.getCellIndex(i);
-		const auto& cell = _grid.getCell(cellIdx);
+		const auto& cell = _grid->getCell(cellIdx);
 		GridFace vertFaceSet[3];
 		CellVertPos pos = cell.getVertsPos(vertIdx);
 		cell.getVertGridFaces(cellIdx, pos, vertFaceSet);
@@ -311,7 +312,7 @@ size_t CMesher::findVertFaces(size_t vertIdx, set<GridFace>& faceSet) const {
 }
 
 void CMesher::clampBoundaryPlane(size_t vertIdx) {
-	auto& vert = _grid.getVert(vertIdx);
+	auto& vert = _grid->getVert(vertIdx);
 
 	const vector<size_t>& cellIndices = vert.getCellIndices();
 	if (cellIndices.size() != 4) {
@@ -320,11 +321,11 @@ void CMesher::clampBoundaryPlane(size_t vertIdx) {
 
 	vector<Vector3d> norms;
 	for (size_t cellIdx : cellIndices) {
-		const GridCell& cell = _grid.getCell(cellIdx);
+		const GridCell& cell = _grid->getCell(cellIdx);
 		size_t vertIndices[3];
 		cell.getVertsEdgeIndices(cell.getVertsPos(vertIdx), vertIndices);
 		for (int i = 0; i < 3; i++) {
-			const auto& pt = _grid.getVert(vertIndices[i]).getPt();
+			const auto& pt = _grid->getVert(vertIndices[i]).getPt();
 			norms.push_back((pt - vert.getPt()).normalized());
 		}
 	}
@@ -346,18 +347,18 @@ void CMesher::clampBoundaryPlane(size_t vertIdx) {
 	}
 
 	if (hits[X_POS] == 0 || hits[X_NEG] == 0)
-		vert.setClamp(_grid, TopolRef::createPerpendicular(vX));
+		vert.setClamp(*_grid, TopolRef::createPerpendicular(vX));
 	else if (hits[Y_POS] == 0 || hits[Y_NEG] == 0)
-		vert.setClamp(_grid, TopolRef::createPerpendicular(vY));
+		vert.setClamp(*_grid, TopolRef::createPerpendicular(vY));
 	else if (hits[Z_POS] == 0 || hits[Z_NEG] == 0)
-		vert.setClamp(_grid, TopolRef::createPerpendicular(vZ));
+		vert.setClamp(*_grid, TopolRef::createPerpendicular(vZ));
 	else
 		throw "Normal not aligned with a principal axis.";
 
 }
 
 void CMesher::clampBoundaryEdge(size_t vertIdx) {
-	auto& vert = _grid.getVert(vertIdx);
+	auto& vert = _grid->getVert(vertIdx);
 
 	const vector<size_t>& cellIndices = vert.getCellIndices();
 	if (cellIndices.size() != 2) {
@@ -366,11 +367,11 @@ void CMesher::clampBoundaryEdge(size_t vertIdx) {
 
 	vector<Vector3d> norms;
 	for (size_t cellIdx : cellIndices) {
-		const GridCell& cell = _grid.getCell(cellIdx);
+		const GridCell& cell = _grid->getCell(cellIdx);
 		size_t vertIndices[3];
 		cell.getVertsEdgeIndices(cell.getVertsPos(vertIdx), vertIndices);
 		for (int i = 0; i < 3; i++) {
-			const auto& pt = _grid.getVert(vertIndices[i]).getPt();
+			const auto& pt = _grid->getVert(vertIndices[i]).getPt();
 			norms.push_back((pt - vert.getPt()).normalized());
 		}
 	}
@@ -386,23 +387,23 @@ void CMesher::clampBoundaryEdge(size_t vertIdx) {
 	}
 
 	if (hits[X_AXIS] == 1)
-		vert.setClamp(_grid, TopolRef::createParallel(vX));
+		vert.setClamp(*_grid, TopolRef::createParallel(vX));
 	else if (hits[Y_AXIS] == 1)
-		vert.setClamp(_grid, TopolRef::createParallel(vY));
+		vert.setClamp(*_grid, TopolRef::createParallel(vY));
 	else if (hits[Z_AXIS] == 1)
-		vert.setClamp(_grid, TopolRef::createParallel(vZ));
+		vert.setClamp(*_grid, TopolRef::createParallel(vZ));
 	else
 		throw "Normal not aligned with a principal axis.";
 }
 
 void CMesher::clampBoundaryCorner(size_t vertIdx) {
-	auto& vert = _grid.getVert(vertIdx);
-	vert.setClamp(_grid, TopolRef::createFixed());
+	auto& vert = _grid->getVert(vertIdx);
+	vert.setClamp(*_grid, TopolRef::createFixed());
 }
 
 void CMesher::clampBoundaries() {
-	_grid.iterateVerts([&](size_t vertIdx)->bool {
-		auto& v = _grid.getVert(vertIdx);
+	_grid->iterateVerts([&](size_t vertIdx)->bool {
+		auto& v = _grid->getVert(vertIdx);
 		if (v.getClampType() != CLAMP_NONE)
 			return true;
 		size_t numCells = v.getNumCells();
@@ -431,7 +432,7 @@ void CMesher::intersectMesh() {
 }
 
 void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
-	_grid.clearSearchTrees();
+	_grid->clearSearchTrees();
 
 	if (steps < 0) {
 #ifdef _DEBUG
@@ -443,7 +444,7 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 
 	ofstream logOut(savePath + "opt_log.csv");
 
-	const int numThreads = 8;
+	const int numThreads = 6;
 	for (int i = 0; i < steps; i++) {
 		checkStop();
 		double maxMoveArr[numThreads], avgMoveArr[numThreads];
@@ -452,27 +453,27 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 			maxMoveArr[j]= avgMoveArr[j] = maxEnergyArr[j] = avgEnergyArr[j] = 0;
 		}
 
-		_grid.iterateVerts([&](size_t vertIdx)->bool {
-			auto& vert = _grid.getVert(vertIdx);
+		_grid->iterateVerts([&](size_t vertIdx)->bool {
+			auto& vert = _grid->getVert(vertIdx);
 			vert.copyToThread();
 			return true;
 		}, numThreads);
 
-		_grid.iterateVerts([&](size_t vertIdx)->bool {
+		_grid->iterateVerts([&](size_t vertIdx)->bool {
 			size_t threadNum = Grid::getThreadNumber();
 
 			if (vertIdx == 164) {
 				int dbgBreak = 1;
 			}
 
-			double move = _grid.minimizeVertexEnergy(logOut, vertIdx, energyMask);
+			double move = _grid->minimizeVertexEnergy(logOut, vertIdx, energyMask);
 
 			if (move > maxMoveArr[threadNum])
 				maxMoveArr[threadNum] = move;
-			double e = _grid.calcVertexEnergy(vertIdx);
+			double e = _grid->calcVertexEnergy(vertIdx);
 
 			if (vertIdx == 164) {
-				_grid.calcVertexEnergy(vertIdx);
+				_grid->calcVertexEnergy(vertIdx);
 			}
 
 			if (e > maxEnergyArr[threadNum])
@@ -483,8 +484,8 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 			return true;
 			}, numThreads);
 
-		_grid.iterateVerts([&](size_t vertIdx)->bool {
-			auto& vert = _grid.getVert(vertIdx);
+		_grid->iterateVerts([&](size_t vertIdx)->bool {
+			auto& vert = _grid->getVert(vertIdx);
 			vert.copyFromThread();
 			return true;
 			}, numThreads);
@@ -500,9 +501,9 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 				numClamps[i] = 0;
 			}
 
-			_grid.iterateVerts([&](size_t vertIdx)->bool {
+			_grid->iterateVerts([&](size_t vertIdx)->bool {
 				size_t threadNum = Grid::getThreadNumber();
-				double dist = _grid.clampVertexToCellEdgeCenter(vertIdx);
+				double dist = _grid->clampVertexToCellEdgeCenter(vertIdx);
 				if (dist < DBL_MAX) {
 					avgMoveClampArr[threadNum] += fabs(dist);
 					numClamps[threadNum]++;
@@ -510,9 +511,9 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 				return true;
 			}, numThreads);
 
-			_grid.iterateVerts([&](size_t vertIdx)->bool {
+			_grid->iterateVerts([&](size_t vertIdx)->bool {
 				size_t threadNum = Grid::getThreadNumber();
-				double dist = _grid.clampVertexToTriPlane(vertIdx);
+				double dist = _grid->clampVertexToTriPlane(vertIdx);
 				if (dist < DBL_MAX) {
 					avgMoveClampArr[threadNum] += fabs(dist);
 					numClamps[threadNum]++;
@@ -520,17 +521,17 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 				return true;
 			}, numThreads);
 
-			_grid.iterateVerts([&](size_t vertIdx)->bool {
+			_grid->iterateVerts([&](size_t vertIdx)->bool {
 				size_t threadNum = Grid::getThreadNumber();
-				double dist = _grid.clampVertexToCellFaceCenter(vertIdx);
+				double dist = _grid->clampVertexToCellFaceCenter(vertIdx);
 				if (dist < DBL_MAX) {
 					avgMoveClampArr[threadNum] += fabs(dist);
 					numClamps[threadNum]++;
 				}
 				return true;
 			}, numThreads);
-			_grid.iterateVerts([&](size_t vertIdx)->bool {
-				auto& vert = _grid.getVert(vertIdx);
+			_grid->iterateVerts([&](size_t vertIdx)->bool {
+				auto& vert = _grid->getVert(vertIdx);
 				vert.copyFromThread();
 				return true;
 			}, numThreads);
@@ -556,11 +557,12 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 			avgEnergy += avgEnergyArr[j];
 		}
 
-		avgMove /= _grid.numVerts();
-		avgEnergy /= _grid.numVerts();
+		avgMove /= _grid->numVerts();
+		avgEnergy /= _grid->numVerts();
 
 		cout << i << ": Max move= " << maxMove << ", avgMove: " << avgMove << ", maxEnergy: " << maxEnergy << ", avgEnergy: " << avgEnergy << "\n";
 
+#if DUMP_OBJ
 		if (!filename.empty() && (i % 5) == 0) {
 			string str;
 
@@ -573,21 +575,22 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 
 		if (maxMove < 0.001 * _params.calcMaxEdgeLength())
 			break;
+#endif
 	}
 
-	_grid.rebuildVertTree();
+	_grid->rebuildVertTree();
 }
 
 void CMesher::splitCells(int numSplits) {
 	for (int i = 0; i < numSplits; i++) {
 		// TODO make the a CSplitter method
-		CSplitter div(_grid);
+		CSplitter div(*_grid);
 		div.splitAll();
 	}
 }
 
 double CMesher::calVertEnergy(size_t vertIdx) const {
-	const auto& vert = _grid.getVert(vertIdx);
+	const auto& vert = _grid->getVert(vertIdx);
 
 	return 0;
 }
@@ -598,25 +601,29 @@ void CMesher::divideMesh(int numDivisions) {
 	for (int i = 0; i < numDivisions; i++) {
 		int mask = CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI | CLAMP_FIXED;
 
-		_grid.iterateVerts([&](size_t vertIdx)->bool {
-			_grid.clampVertexToCellEdgeCenter(vertIdx);
+		_grid->iterateVerts([&](size_t vertIdx)->bool {
+			_grid->clampVertexToCellEdgeCenter(vertIdx);
 			return true;
 		});
 
 		splitCells(1);
+
+#if DUMP_OBJ
 		string splitName("divSplit_");
 		splitName += std::to_string(i);
 		_dumpObj.write(splitName, 0);
 		_dumpObj.write(splitName + "Reduced1", 1, mask);
 		_dumpObj.write(splitName + "Reduced2", 2, mask);
-
+#endif
 		minimizeMesh(25, -1);
 
+#if DUMP_OBJ
 		string minName("divMin_");
 		minName += std::to_string(i);
 		_dumpObj.write(minName, 0);
 		_dumpObj.write(minName + "Reduced1", 1, mask);
 		_dumpObj.write(minName + "Reduced2", 2, mask);
+#endif
 	}
 }
 
@@ -710,37 +717,48 @@ void CMesher::putCornersOnSharpEdges() {
 		}
 	}
 
-	if (!_grid.verify())
+	if (!_grid->verify())
 		cout << "Bad mesh after polyline fit\n";
 
+#if DUMP_OBJ
 	_dumpObj.write ("alignedMeshPreSplitPreMin");
 	_dumpObj.write("alignedMeshPreSplitPreMinReduced", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
+#endif
 
 	minimizeMesh(25, -1);
 
+#if DUMP_OBJ
 	_dumpObj.write("alignedMeshPostSplitPreMin");
 	_dumpObj.write("alignedMeshPostSplitPreMinReduced", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
+#endif
+
 	{
 		vector<size_t> cells;
 		cells.insert(cells.end(), cellsToSplit.begin(), cellsToSplit.end());
+
+#if DUMP_OBJ
 		_dumpObj.writeCells("cellToBeSplit", cells);
+#endif
+
 	}
 
-	CSplitter divider(_grid);
+	CSplitter divider(*_grid);
 	divider.splitCells(cellsToSplit);
 	const auto& newCells = divider.getNewCells();
 
 	for (size_t cellId : newCells) {
-		const auto& cell = _grid.getCell(cellId);
+		const auto& cell = _grid->getCell(cellId);
 		for (CellVertPos p = LWR_FNT_LFT; p < CVP_UNKNOWN; p++) {
-			_grid.clampVertex(cell.getVertIdx(p));
+			_grid->clampVertex(cell.getVertIdx(p));
 		}
 	}
 
+#if DUMP_OBJ
 	_dumpObj.writeCells("cellFromSplit", newCells);
 	_dumpObj.writeCells("clampedCells", divider.getClampedCells());
+#endif
 
-	if (!_grid.verify())
+	if (!_grid->verify())
 		cout << "Bad mesh after diagonal split\n";
 }
 
@@ -769,25 +787,31 @@ void CMesher::init() {
 	const double sinEdgeAngle = sin(_params.sharpAngleDeg * EIGEN_PI / 180.0);
 	dumpModelSharpEdgesObj("sharp edges", sinEdgeAngle);
 
-	_grid.setBounds(_params.bounds);
+	_grid->setBounds(_params.bounds);
 	_reporter->report(*this, "initialized");
 
 }
 
 void CMesher::makeInitialGrid() {
-	_grid.init(_params.bounds);
+	_grid->init(_params.bounds);
 	clampBoundaries();
 	//					splitCellsAroundPolylines();
 	//					_dumpObj.write("polylineSplit");
 	snapToCusps();
+#if DUMP_OBJ
 	_dumpObj.write("cuspSnap");
+#endif
 
 	for (int i = 0; i < 0; i++) {
 		// TODO make the a CSplitter method
-		CSplitter div(_grid);
+		CSplitter div(*_grid);
 		div.splitAll();
 	}
+
+#if DUMP_OBJ
 	_dumpObj.write("postSplit");
+#endif
+
 	save(savePath + "initial.grid");
 }
 
@@ -800,39 +824,45 @@ ErrorCode CMesher::run() {
 				if (!read(savePath + "initial.grid")) {
 					makeInitialGrid();
 				}
+				_reporter->report(*this, "update_grid");
 
 				minimizeMesh(50, -1);
 
+#if DUMP_OBJ
 				_dumpObj.write("preFit", 0);
 				_dumpObj.write("preFitReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
 				_dumpObj.write("preFitReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
+#endif
 
 				save(savePath + "preFit.grid");
 				cout << "Saved state to preFit.grid\n";
 			}
 			cout.flush();
+			_reporter->report(*this, "update_grid");
 
 			putCornersOnSharpEdges();
 			// Need to save EVERYTHING!! The polyline numbers are different after reading!
 			save(savePath + "postFit.grid");
-
+#if DUMP_OBJ
 			_dumpObj.write("postFit", 0);
 			_dumpObj.write("postFitReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
 			_dumpObj.write("postFitReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
 			_dumpObj.writeFaces("clampedFaces", 2, CLAMP_VERT | CLAMP_EDGE | CLAMP_FIXED);
 			_dumpObj.writeFaces("bounds", 4, CLAMP_PARALLEL | CLAMP_PERPENDICULAR | CLAMP_FIXED);
-
+#endif
 		}
 
 		GridVert::clearHistory();
 		minimizeMesh(25, -1);
 		GridVert::writeHistory(savePath + "vertHistory.csv");
 
+#if DUMP_OBJ
 		_dumpObj.write("alignedMeshMin", 0);
 		_dumpObj.write("alignedMeshMinReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
 		_dumpObj.write("alignedMeshMinReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
 		_dumpObj.writeFaces("alignedFacesMinReduced1", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
 		_dumpObj.writeFaces("alignedFacesMinReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
+#endif
 
 		divideMesh(1);
 
@@ -859,7 +889,7 @@ void CMesher::dumpModelSharpEdgesObj(const string& filenameRoot, double sinAngle
 	}
 }
 
-void CMesher::Reporter::report(const CMesher& mesher, const std::string& key) const {
+void CMesher::Reporter::report(const CMesher& mesher, const std::string& key) {
 
 }
 

@@ -76,18 +76,16 @@ namespace std {
 
 UI::ModelEdges::ModelEdges(const VK::PipelineBasePtr& _ownerPipeline, const CModelPtr& model)
 	: PipelineSceneNode3D(_ownerPipeline)
-	, _vertexBuffer(_ownerPipeline->getApp().get())
-	, _indexBuffer(_ownerPipeline->getApp().get())
+	, _vertexBuffer(_ownerPipeline->getApp()->getDeviceContext())
+	, _indexBuffer(_ownerPipeline->getApp()->getDeviceContext())
 {
 	loadModel(model);
-	createVertexBuffer();
-	createIndexBuffer();
 }
 
 UI::ModelEdges::ModelEdges(const VK::PipelineBasePtr& _ownerPipeline)
 	: PipelineSceneNode3D(_ownerPipeline)
-	, _vertexBuffer(_ownerPipeline->getApp().get())
-	, _indexBuffer(_ownerPipeline->getApp().get())
+	, _vertexBuffer(_ownerPipeline->getApp()->getDeviceContext())
+	, _indexBuffer(_ownerPipeline->getApp()->getDeviceContext())
 {
 }
 
@@ -100,7 +98,7 @@ void UI::ModelEdges::addCommands(VkCommandBuffer cmdBuff, VkPipelineLayout pipel
 
 	vkCmdBindDescriptorSets(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &_descriptorSets[swapChainIndex], 0, nullptr);
 
-	vkCmdDrawIndexed(cmdBuff, (uint32_t)_indices.size(), 1, 0, 0, 0);
+	vkCmdDrawIndexed(cmdBuff, _numIndices, 1, 0, 0, 0);
 }
 
 void UI::ModelEdges::buildImageInfoList(std::vector<VkDescriptorImageInfo>& imageInfoList) const {
@@ -122,8 +120,8 @@ void UI::ModelEdges::loadModel(const CModelPtr& model) {
 	_bounds.clear();
 
 	map<VertexType, size_t, compareFunc> vertMap;
-	_vertices.clear();
-	_indices.clear();
+	vector<VertexType> vertices;
+	vector<uint32_t> indices;
 
 	const auto& pls = model->_polyLines;
 	for (const auto& pl : pls) {
@@ -143,11 +141,11 @@ void UI::ModelEdges::loadModel(const CModelPtr& model) {
 
 			auto iter = vertMap.find(v0);
 			if (iter == vertMap.end()) {
-				size_t idx = _vertices.size();
-				_vertices.push_back(v0);
+				size_t idx = vertices.size();
+				vertices.push_back(v0);
 				iter = vertMap.insert(make_pair(v0, idx)).first;
 			}
-			_indices.push_back((uint32_t)iter->second);
+			indices.push_back((uint32_t)iter->second);
 
 			VertexType v1;
 			v1.color = { 1, 0, 0 };
@@ -158,28 +156,23 @@ void UI::ModelEdges::loadModel(const CModelPtr& model) {
 
 			iter = vertMap.find(v1);
 			if (iter == vertMap.end()) {
-				size_t idx = _vertices.size();
-				_vertices.push_back(v1);
+				size_t idx = vertices.size();
+				vertices.push_back(v1);
 				iter = vertMap.insert(make_pair(v1, idx)).first;
 			}
-			_indices.push_back((uint32_t)iter->second);
+			indices.push_back((uint32_t)iter->second);
 		}
 	}
 
-}
-
-void UI::ModelEdges::createVertexBuffer() {
-	_vertexBuffer.create(_vertices, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-}
-
-void UI::ModelEdges::createIndexBuffer() {
-	_indexBuffer.create(_indices, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	_vertexBuffer.create(vertices, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	_indexBuffer.create(indices, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	_numIndices = (uint32_t)indices.size();
 }
 
 void UI::ModelEdges::createDescriptorPool() {
 	auto app = _ownerPipeline->getApp();
 	const auto& swap = app->getSwapChain();
-	auto devCon = app->getDeviceContext().device_;
+	auto devCon = app->getDeviceContext()->device_;
 
 	std::array<VkDescriptorPoolSize, 2> poolSizes = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -200,7 +193,7 @@ void UI::ModelEdges::createDescriptorPool() {
 
 void UI::ModelEdges::createDescriptorSets() {
 	auto app = _ownerPipeline->getApp();
-	auto dc = app->getDeviceContext().device_;
+	auto dc = app->getDeviceContext()->device_;
 
 	const auto& swap = app->getSwapChain();
 	size_t swapChainSize = (uint32_t)swap._vkImages.size();
@@ -249,7 +242,7 @@ void UI::ModelEdges::createUniformBuffers() {
 	_uniformBuffers.reserve(swapChainSize);
 
 	for (size_t i = 0; i < swapChainSize; i++) {
-		_uniformBuffers.push_back(VK::Buffer(app.get()));
+		_uniformBuffers.push_back(VK::Buffer(app->getDeviceContext()));
 		_uniformBuffers.back().create(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	}

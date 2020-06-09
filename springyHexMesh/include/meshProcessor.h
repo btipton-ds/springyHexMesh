@@ -77,7 +77,7 @@ namespace HexahedralMesher {
 
 		class Reporter {
 		public:
-			virtual void report(const CMesher& mesher, const std::string& key) const;
+			virtual void report(const CMesher& mesher, const std::string& key);
 			virtual void reportModelAdded(const CMesher& mesher, const CModelPtr& model);
 			virtual bool isRunning() const;
 		};
@@ -102,11 +102,7 @@ namespace HexahedralMesher {
 		void splitCellsAroundPolylines();
 		void snapToCusps();
 
-		inline const Grid& getGrid() const {
-			return _grid;
-		}
-
-		inline Grid& getGrid() {
+		inline const GridPtr& getGrid() const {
 			return _grid;
 		}
 
@@ -161,7 +157,7 @@ namespace HexahedralMesher {
 		std::thread* _thread = nullptr;
 		ParamsRec _params;
 		ReporterPtr _reporter;
-		Grid _grid;
+		GridPtr _grid;
 		DumpObj _dumpObj;
 		std::vector<CModelPtr> _modelPtrs;
 	};

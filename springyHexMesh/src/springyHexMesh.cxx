@@ -42,7 +42,7 @@ using TestReporterPtr = shared_ptr<TestReporter>;
 
 class TestReporter : public CMesher::Reporter {
 public:
-	void report(const CMesher& mesher, const std::string& key) const override {
+	void report(const CMesher& mesher, const std::string& key) override {
 
 	}
 

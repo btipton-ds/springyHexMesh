@@ -79,12 +79,8 @@ namespace HexahedralMesher {
 
 			void loadModel(const CModelPtr& model);
 
-			void createVertexBuffer();
-			void createIndexBuffer();
-
 			BoundingBox _bounds;
-			std::vector<VertexType> _vertices;
-			std::vector<uint32_t> _indices;
+			uint32_t _numIndices = 0;
 			VK::Buffer _vertexBuffer, _indexBuffer;
 		};
 

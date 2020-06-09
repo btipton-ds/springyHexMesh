@@ -35,22 +35,26 @@ This file is part of the SpringHexMesh Project.
 #include <vector>
 
 #include <hm_forwardDeclarations.h>
+#include <hm_ui_gridTriNode.h>
 
 #include <meshProcessor.h>
+#include <vk_pipelineSceneNode3D.h>
+#include <vk_pipeline3D.h>
 #include <vk_app.h>
 
 namespace HexahedralMesher {
 
 	namespace UI {
 
-		class GridNode;
-		using GridNodePtr = std::shared_ptr<GridNode>;
+		class GridTriNode;
+		using GridTriNodePtr = std::shared_ptr<GridTriNode>;
 
 		class Root;
 		using RootPtr = std::shared_ptr<Root>;
 
 		class Root : public CMesher::Reporter {
 		public:
+			using BoundingBox = VK::Pipeline3D::BoundingBox;
 
 			Root(const CMesherPtr& mesher);
 			virtual ~Root();
@@ -58,13 +62,24 @@ namespace HexahedralMesher {
 			// GLFW events only work from the main thread. So the GUI needs to be the main thread.
 			bool run();
 
-			void report(const CMesher& mesher, const std::string& key) const override;
+			VK::VulkanAppPtr getApp() const;
+			const VK::Pipeline3DPtr& getPipelineTriShaded() const;
+			const VK::Pipeline3DPtr& getPipelineTriWire() const;
+			const VK::Pipeline3DPtr& getPipelineLines() const;
+
+			void report(const CMesher& mesher, const std::string& key) override;
 			void reportModelAdded(const CMesher& mesher, const CModelPtr& model) override;
 			bool isRunning() const override;
 
+			const VK::BufferPtr& getPosNormVertBuffer() const;
+
+			inline const BoundingBox& getBounds() const;
 
 		private:
 			void buildUi(const VK::UI::WindowPtr& win);
+			void buildBuffers();
+			void buildPosNormBuffer();
+			void addGridFaces();
 
 			bool _isRunning = true;
 
@@ -75,10 +90,41 @@ namespace HexahedralMesher {
 			std::vector<ModelRec> _models;
 
 			CMesherPtr _mesher;
-			VK::Pipeline3DPtr _pipelineStlShaded, _pipelineStlWireframe, _pipelineEdges;
+
 			VK::VulkanAppPtr _app;
+			VK::Pipeline3DPtr _pipelineTriShaded, _pipelineTriWire, _pipelineLines;
+			GridTriNodePtr _allGridTriShaded, _allGridTriWf;
+
+			BoundingBox _bbox;
+			std::vector<std::array<uint32_t, 3>> _tris;
+			std::map<SearchableFace, std::array<size_t, 2>> _faceToTriMap;
+			VK::BufferPtr _posNormVertBuffer; // Vertex buffer with normals for each tri direction
 		};
 
+
+		inline VK::VulkanAppPtr Root::getApp() const {
+			return _app;
+		}
+
+		inline const VK::Pipeline3DPtr& Root::getPipelineTriShaded() const {
+			return _pipelineTriShaded;
+		}
+
+		inline const VK::Pipeline3DPtr& Root::getPipelineTriWire() const {
+			return _pipelineTriWire;
+		}
+
+		inline const VK::Pipeline3DPtr& Root::getPipelineLines() const {
+			return _pipelineLines;
+		}
+
+		inline const VK::BufferPtr& Root::getPosNormVertBuffer() const {
+			return _posNormVertBuffer;
+		}
+
+		inline const Root::BoundingBox& Root::getBounds() const {
+			return _bbox;
+		}
 
 	}
 }
