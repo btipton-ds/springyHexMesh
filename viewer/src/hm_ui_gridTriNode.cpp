@@ -56,7 +56,7 @@ void UI::GridTriNode::setFaceDrawList(const vector<uint32_t>& indices) {
 }
 
 void UI::GridTriNode::addCommands(VkCommandBuffer cmdBuff, VkPipelineLayout pipelineLayout, size_t swapChainIndex) const {
-	VkBuffer vertexBuffers[] = { _root->getPosNormVertBuffer()->buffer_ };
+	VkBuffer vertexBuffers[] = { *_root->getPosNormVertBuffer() };
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(cmdBuff, 0, 1, vertexBuffers, offsets);
 

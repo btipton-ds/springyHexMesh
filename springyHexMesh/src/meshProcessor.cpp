@@ -444,7 +444,7 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 
 	ofstream logOut(savePath + "opt_log.csv");
 
-	const int numThreads = 6;
+	const int numThreads = 1;
 	for (int i = 0; i < steps; i++) {
 		checkStop();
 		double maxMoveArr[numThreads], avgMoveArr[numThreads];
@@ -790,7 +790,7 @@ void CMesher::init() {
 	dumpModelSharpEdgesObj("sharp edges", sinEdgeAngle);
 
 	_grid->setBounds(_params.bounds);
-	_reporter->report(*this, "initialized");
+	_reporter->report(*this, "grid_topol_change");
 
 }
 
@@ -826,7 +826,7 @@ ErrorCode CMesher::run() {
 				if (!read(savePath + "initial.grid")) {
 					makeInitialGrid();
 				}
-				_reporter->report(*this, "update_grid");
+				_reporter->report(*this, "grid_topol_change");
 
 				minimizeMesh(50, -1);
 
@@ -840,7 +840,7 @@ ErrorCode CMesher::run() {
 				cout << "Saved state to preFit.grid\n";
 			}
 			cout.flush();
-			_reporter->report(*this, "update_grid");
+			_reporter->report(*this, "grid_topol_change");
 
 			putCornersOnSharpEdges();
 			// Need to save EVERYTHING!! The polyline numbers are different after reading!
@@ -853,6 +853,7 @@ ErrorCode CMesher::run() {
 			_dumpObj.writeFaces("bounds", 4, CLAMP_PARALLEL | CLAMP_PERPENDICULAR | CLAMP_FIXED);
 #endif
 		}
+		_reporter->report(*this, "grid_topol_change");
 
 		GridVert::clearHistory();
 		minimizeMesh(25, -1);

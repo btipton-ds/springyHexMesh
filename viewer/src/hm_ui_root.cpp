@@ -243,7 +243,7 @@ bool Root::run() {
 }
 
 void Root::report(const CMesher& mesher, const std::string& key) {
-	if (key == "update_grid") {
+	if (key == "grid_topol_change") {
 		buildBuffers();
 	} else if (key == "grid_verts_changed") {
 		updateVerts();
@@ -251,25 +251,25 @@ void Root::report(const CMesher& mesher, const std::string& key) {
 }
 
 void Root::buildBuffers() {
-	buildPosNormBuffer();
-	addGridFaces();
-	//		grid.buildBuffers();
-}
-
-void Root::buildPosNormBuffer() {
 	const auto& grid = *_mesher->getGrid();
 	if (grid.numCells() == 0)
 		return;
 
+	buildPosNormBuffer(true);
+	addGridFaces();
+}
+
+void Root::buildPosNormBuffer(bool buildTopology) {
+	const auto& grid = *_mesher->getGrid();
+
 	_bbox.clear();
 
-	_posNormVertBuffer = make_shared<VK::Buffer>(_app->getDeviceContext());
+	if (buildTopology) {
+		_tris.clear();
+		_faceToTriMap.clear();
+	}
 
 	vector<VK::Vertex3_PNCf> verts;
-	map<VK::Vertex3_PNCf, size_t, comparePosNormFunc> vertMap;
-
-	_tris.clear();
-	_faceToTriMap.clear();
 	map<SearchableTri, size_t> triMap;
 	set<SearchableFace> faceSet;
 
@@ -302,39 +302,57 @@ void Root::buildPosNormBuffer() {
 					vert.norm = glm::normalize(vert.norm);
 
 					vert.color = colorOf(gVert);
-					auto vertIter = vertMap.find(vert);
-					if (vertIter == vertMap.end()) {
-						size_t idx = verts.size();
-						verts.push_back(vert);
-						_bbox.merge(Vector3f(vert.pos[0], vert.pos[1], vert.pos[2]));
-						vertIter = vertMap.insert(make_pair(vert, idx)).first;
-					}
-					tri[j] = (uint32_t)vertIter->second;
+
+					size_t idx = verts.size();
+					verts.push_back(vert);
+					_bbox.merge(Vector3f(vert.pos[0], vert.pos[1], vert.pos[2]));
+
+					tri[j] = (uint32_t)idx;
 				}
 
-				SearchableTri st(tri);
-				auto iter = triMap.find(st);
-				if (iter == triMap.end()) {
-					size_t idx = _tris.size();
-					_tris.push_back(tri);
-					iter = triMap.insert(make_pair(st, idx)).first;
+				if (buildTopology) {
+					SearchableTri st(tri);
+					auto iter = triMap.find(st);
+					if (iter == triMap.end()) {
+						size_t idx = _tris.size();
+						_tris.push_back(tri);
+						iter = triMap.insert(make_pair(st, idx)).first;
+					}
+					faceTris[i] = iter->second;
 				}
-				faceTris[i] = iter->second;
 			}
 
-			SearchableFace sf(face.getSearchableFace(grid));
+			if (buildTopology) {
+				SearchableFace sf(face.getSearchableFace(grid));
 
-			_faceToTriMap.insert(make_pair(sf, faceTris));
+				_faceToTriMap.insert(make_pair(sf, faceTris));
+			}
 		}
 
 		return true;
 	});
 
-	_posNormVertBuffer->create(verts, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	constexpr VkBufferUsageFlags bufUsageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	constexpr VkMemoryPropertyFlags bufProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+	if (!_posNormVertBuffer) {
+		_posNormVertBuffer = make_shared<VK::Buffer>(_app->getDeviceContext());
+		_posNormVertBuffer->create(verts, bufUsageFlags, bufProperties);
+	} else if (_posNormVertBuffer->getSize() == verts.size() * sizeof(verts[0])) {
+		_app->safeUpdate(false, [&]() {
+			_posNormVertBuffer->updateVec(verts);
+		});
+	} else {
+		_app->safeUpdate(true, [&]() {
+			_posNormVertBuffer = make_shared<VK::Buffer>(_app->getDeviceContext());
+			_posNormVertBuffer->create(verts, bufUsageFlags, bufProperties);
+		});
+	}
+
 }
 
 void Root::updateVerts() {
-
+	buildPosNormBuffer(false);
 }
 
 void Root::addGridFaces() {

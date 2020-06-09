@@ -78,7 +78,7 @@ namespace HexahedralMesher {
 		private:
 			void buildUi(const VK::UI::WindowPtr& win);
 			void buildBuffers();
-			void buildPosNormBuffer();
+			void buildPosNormBuffer(bool buildTopology);
 			void updateVerts();
 			void addGridFaces();
 
