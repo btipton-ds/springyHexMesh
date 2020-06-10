@@ -74,6 +74,7 @@ int main(int numArgs, char** args)
 	mesher->reset();
 
 	UI::RootPtr uiRoot = make_shared<UI::Root>(mesher);
+	uiRoot->getApp()->setUpdater(uiRoot);
 	mesher->setReporter(uiRoot);
 
 	bool fine = false;

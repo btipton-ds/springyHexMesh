@@ -826,7 +826,7 @@ ErrorCode CMesher::run() {
 					makeInitialGrid();
 				}
 				_reporter->report(*this, "grid_topol_change");
-				return NO_ERR;
+//				return NO_ERR;
 				minimizeMesh(50, -1);
 
 #if DUMP_OBJ

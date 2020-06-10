@@ -41,10 +41,10 @@ namespace HexahedralMesher {
 
 		class Root;
 
-		class GridTriNode : public VK::PipelineSceneNode3D {
+		class GridIndexNode : public VK::PipelineSceneNode3D {
 		public:
-			GridTriNode(Root* root, VK::Pipeline3DPtr& ownerPipeline);
-			~GridTriNode();
+			GridIndexNode(Root* root, VK::Pipeline3DPtr& ownerPipeline);
+			~GridIndexNode();
 
 			void setFaceDrawList(const std::vector<uint32_t>& indices);
 
@@ -61,7 +61,7 @@ namespace HexahedralMesher {
 			VK::Buffer _indices;
 		};
 
-		using GridTriNodePtr = std::shared_ptr<GridTriNode>;
+		using GridIndexNodePtr = std::shared_ptr<GridIndexNode>;
 
 	}
 }

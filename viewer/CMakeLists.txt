@@ -66,14 +66,17 @@ link_directories (
 )
 
 add_library ("viewer"
- "src/hm_ui_root.cpp"
-   
+ "src/hm_ui_root.cpp"   
   "src/hm_ui_modelEdges.cpp"
-   "src/hm_ui_gridTriNode.cpp")
+  "src/hm_ui_gridIndexNode.cpp" 
+)
+
+target_compile_features(viewer PRIVATE cxx_std_17)
 
 add_executable ("springyHexMeshViewer"
- "src/viewer.cxx" 
-  "src/hm_ui_gridTriNode.cpp")
+ "src/viewer.cxx" )
+
+target_compile_features(springyHexMeshViewer PRIVATE cxx_std_17)
 
 find_package(Vulkan)
 

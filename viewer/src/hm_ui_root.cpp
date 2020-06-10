@@ -36,7 +36,7 @@ This file is part of the SpringHexMesh Project.
 #include <hm_ui_modelEdges.h>
 #include <vk_app.h>
 
-#include <hm_ui_gridTriNode.h>
+#include <hm_ui_gridIndexNode.h>
 #include <hm_ui_root.h>
 
 using namespace std;
@@ -136,10 +136,11 @@ Root::Root(const CMesherPtr& mesher)
 	buildUi(gui);
 
 	_pipelineTriShaded = _app->addPipelineWithSource<VK::Pipeline3D>("model_shaded", "shaders/shader_vert.spv", "shaders/shader_frag.spv");
-#if 1
+
 	_pipelineGridFaceBounds = _app->addPipelineWithSource<VK::Pipeline3D>("grid_face_bounds", "shaders/shader_vert.spv", "shaders/shader_grid_wireframe_frag.spv");
 	_pipelineGridFaceBounds->setPolygonMode(VK_POLYGON_MODE_LINE);
-#endif
+	_pipelineGridFaceBounds->setToplogy(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+
 	_pipelineTriWire = _app->addPipelineWithSource<VK::Pipeline3D>("model_wireframe", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
 	_pipelineTriWire->setPolygonMode(VK_POLYGON_MODE_LINE);
 	_pipelineTriWire->toggleVisiblity();
@@ -246,11 +247,21 @@ bool Root::run() {
 }
 
 void Root::report(const CMesher& mesher, const std::string& key) {
+	_updateBits = 0;
 	if (key == "grid_topol_change") {
-		buildBuffers();
+		_updateBits |= 1;
 	} else if (key == "grid_verts_changed") {
-//		updateVerts();
+		_updateBits |= 2;
 	}
+}
+
+void Root::updateVkApp() {
+	if (_updateBits & 1) {
+		buildBuffers();
+	} else if (_updateBits & 2) {
+		updateVerts();
+	}
+	_updateBits = 0;
 }
 
 void Root::buildBuffers() {
@@ -342,14 +353,10 @@ void Root::buildPosNormBuffer(bool buildTopology) {
 		_posNormVertBuffer = make_shared<VK::Buffer>(_app->getDeviceContext());
 		_posNormVertBuffer->create(verts, bufUsageFlags, bufProperties);
 	} else if (_posNormVertBuffer->getSize() == verts.size() * sizeof(verts[0])) {
-		_app->safeUpdate(false, [&]() {
-			_posNormVertBuffer->updateVec(verts);
-		});
+		_posNormVertBuffer->updateVec(verts);
 	} else {
-		_app->safeUpdate(true, [&]() {
-			_posNormVertBuffer = make_shared<VK::Buffer>(_app->getDeviceContext());
-			_posNormVertBuffer->create(verts, bufUsageFlags, bufProperties);
-		});
+		_posNormVertBuffer = make_shared<VK::Buffer>(_app->getDeviceContext());
+		_posNormVertBuffer->create(verts, bufUsageFlags, bufProperties);
 	}
 
 }
@@ -360,6 +367,7 @@ void Root::updateVerts() {
 
 void Root::addGridFaces() {
 	vector<uint32_t> tris;
+	vector<uint32_t> quadEdges;
 
 	const auto& grid = *_mesher->getGrid();
 
@@ -370,25 +378,46 @@ void Root::addGridFaces() {
 			auto iter = _faceToTriMap.find(sf);
 			if (iter != _faceToTriMap.end()) {
 				const auto& triPair = iter->second;
-				for (size_t triIdx : triPair) {
-					const auto& tri = _tris[triIdx];
-					for (size_t idx : tri) {
-						tris.push_back((uint32_t)idx);
-					}
+				const auto& tri0 = _tris[triPair[0]];
+				const auto& tri1 = _tris[triPair[1]];
+				for (size_t idx : tri0) {
+					tris.push_back((uint32_t)idx);
 				}
+				for (size_t idx : tri1) {
+					tris.push_back((uint32_t)idx);
+				}
+
+				quadEdges.push_back(tri0[0]);
+				quadEdges.push_back(tri0[1]);
+
+				quadEdges.push_back(tri0[1]);
+				quadEdges.push_back(tri0[2]);
+
+				quadEdges.push_back(tri1[2]);
+				quadEdges.push_back(tri1[3]);
+
+				quadEdges.push_back(tri1[3]);
+				quadEdges.push_back(tri1[0]);
 			}
 		}
 
 		return true;
 	});
 
-	_allGridTriShaded = make_shared<GridTriNode>(this, _pipelineTriShaded);
+	_allGridTriShaded = make_shared<GridIndexNode>(this, _pipelineTriShaded);
 	_allGridTriShaded->setFaceDrawList(tris);
 	_pipelineTriShaded->addSceneNode(_allGridTriShaded);
 
-	_allGridTriWf = make_shared<GridTriNode>(this, _pipelineTriWire);
+	_allGridTriWf = make_shared<GridIndexNode>(this, _pipelineTriWire);
 	_allGridTriWf->setFaceDrawList(tris);
 	_pipelineTriWire->addSceneNode(_allGridTriWf);
+
+#if 0
+	_allGridFaceBounds = make_shared<GridIndexNode>(this, _pipelineLines);
+	_allGridFaceBounds->setFaceDrawList(quadEdges);
+	_pipelineLines->addSceneNode(_allGridFaceBounds);
+#endif
+
 }
 
 void Root::reportModelAdded(const CMesher& mesher, const CModelPtr& model) {

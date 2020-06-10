@@ -36,26 +36,26 @@ This file is part of the SpringHexMesh Project.
 #include <tm_math.h>
 #include <vk_buffer.h>
 #include <hm_ui_root.h>
-#include <hm_ui_gridTriNode.h>
+#include <hm_ui_gridIndexNode.h>
 
 using namespace std;
 using namespace HexahedralMesher;
 
-UI::GridTriNode::GridTriNode(Root* root, VK::Pipeline3DPtr& ownerPipeline)
+UI::GridIndexNode::GridIndexNode(Root* root, VK::Pipeline3DPtr& ownerPipeline)
 	: PipelineSceneNode3D(ownerPipeline)
 	, _root(root)
 	, _indices(ownerPipeline->getApp()->getDeviceContext())
 {}
 
-UI::GridTriNode::~GridTriNode() {
+UI::GridIndexNode::~GridIndexNode() {
 }
 
-void UI::GridTriNode::setFaceDrawList(const vector<uint32_t>& indices) {
+void UI::GridIndexNode::setFaceDrawList(const vector<uint32_t>& indices) {
 	_numIndices = (uint32_t)indices.size();
 	_indices.create(indices, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
 
-void UI::GridTriNode::addCommands(VkCommandBuffer cmdBuff, VkPipelineLayout pipelineLayout, size_t swapChainIndex) const {
+void UI::GridIndexNode::addCommands(VkCommandBuffer cmdBuff, VkPipelineLayout pipelineLayout, size_t swapChainIndex) const {
 	VkBuffer vertexBuffers[] = { *_root->getPosNormVertBuffer() };
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(cmdBuff, 0, 1, vertexBuffers, offsets);
@@ -67,15 +67,15 @@ void UI::GridTriNode::addCommands(VkCommandBuffer cmdBuff, VkPipelineLayout pipe
 	vkCmdDrawIndexed(cmdBuff, _numIndices, 1, 0, 0, 0);
 }
 
-void UI::GridTriNode::buildImageInfoList(std::vector<VkDescriptorImageInfo>& imageInfoList) const {
+void UI::GridIndexNode::buildImageInfoList(std::vector<VkDescriptorImageInfo>& imageInfoList) const {
 
 }
 
-typename UI::GridTriNode::BoundingBox UI::GridTriNode::getBounds() const {
+typename UI::GridIndexNode::BoundingBox UI::GridIndexNode::getBounds() const {
 	return this->_root->getBounds();
 }
 
-void UI::GridTriNode::createDescriptorPool() {
+void UI::GridIndexNode::createDescriptorPool() {
 	auto app = _ownerPipeline->getApp();
 	const auto& swap = app->getSwapChain();
 	auto devCon = app->getDeviceContext()->_device;
@@ -97,7 +97,7 @@ void UI::GridTriNode::createDescriptorPool() {
 	}
 }
 
-void UI::GridTriNode::createDescriptorSets() {
+void UI::GridIndexNode::createDescriptorSets() {
 	auto app = _ownerPipeline->getApp();
 	auto dc = app->getDeviceContext()->_device;
 
@@ -138,7 +138,7 @@ void UI::GridTriNode::createDescriptorSets() {
 	}
 }
 
-void UI::GridTriNode::createUniformBuffers() {
+void UI::GridIndexNode::createUniformBuffers() {
 	auto app = _ownerPipeline->getApp();
 	size_t bufferSize = sizeof(UniformBufferObject);
 	const auto& swap = app->getSwapChain();

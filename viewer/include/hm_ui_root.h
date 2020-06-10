@@ -35,7 +35,7 @@ This file is part of the SpringHexMesh Project.
 #include <vector>
 
 #include <hm_forwardDeclarations.h>
-#include <hm_ui_gridTriNode.h>
+#include <hm_ui_gridIndexNode.h>
 
 #include <meshProcessor.h>
 #include <vk_pipelineSceneNode3D.h>
@@ -46,13 +46,13 @@ namespace HexahedralMesher {
 
 	namespace UI {
 
-		class GridTriNode;
-		using GridTriNodePtr = std::shared_ptr<GridTriNode>;
+		class GridIndexNode;
+		using GridIndexNodePtr = std::shared_ptr<GridIndexNode>;
 
 		class Root;
 		using RootPtr = std::shared_ptr<Root>;
 
-		class Root : public CMesher::Reporter {
+		class Root : public CMesher::Reporter, public VK::VulkanApp::Updater {
 		public:
 			using BoundingBox = VK::Pipeline3D::BoundingBox;
 
@@ -69,6 +69,9 @@ namespace HexahedralMesher {
 
 			void report(const CMesher& mesher, const std::string& key) override;
 			void reportModelAdded(const CMesher& mesher, const CModelPtr& model) override;
+
+			void updateVkApp() override;
+
 			bool isRunning() const override;
 
 			const VK::BufferPtr& getPosNormVertBuffer() const;
@@ -94,9 +97,10 @@ namespace HexahedralMesher {
 
 			VK::VulkanAppPtr _app;
 			VK::Pipeline3DPtr _pipelineTriShaded, _pipelineTriWire, _pipelineLines, _pipelineGridFaceBounds;
-			GridTriNodePtr _allGridTriShaded, _allGridTriWf, _allGridFaceBounds;
+			GridIndexNodePtr _allGridTriShaded, _allGridTriWf, _allGridFaceBounds;
 
 			BoundingBox _bbox;
+			size_t _updateBits = 0;
 			std::vector<std::array<uint32_t, 3>> _tris;
 			std::map<SearchableFace, std::array<size_t, 2>> _faceToTriMap;
 			VK::BufferPtr _posNormVertBuffer; // Vertex buffer with normals for each tri direction
