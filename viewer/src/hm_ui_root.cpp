@@ -130,26 +130,29 @@ Root::Root(const CMesherPtr& mesher)
 {
 	_app = make_shared<VK::VulkanApp>(1500, 900);
 	glfwSetWindowTitle(_app->getWindow(), "Springy Hex Mesh");
+	_app->setAntiAliasSamples(VK_SAMPLE_COUNT_4_BIT);
 
 	VK::UI::WindowPtr gui = make_shared<VK::UI::Window>(_app);
 	_app->setUiWindow(gui);
 	buildUi(gui);
 
-	_pipelineTriShaded = _app->addPipelineWithSource<VK::Pipeline3D>("model_shaded", "shaders/shader_vert.spv", "shaders/shader_frag.spv");
+	_plShaded = _app->addPipelineWithSource<VK::Pipeline3D>("model_shaded", "shaders/shader_vert.spv", "shaders/shader_frag.spv");
 
-	_pipelineGridFaceBounds = _app->addPipelineWithSource<VK::Pipeline3D>("grid_face_bounds", "shaders/shader_vert.spv", "shaders/shader_grid_wireframe_frag.spv");
-	_pipelineGridFaceBounds->setPolygonMode(VK_POLYGON_MODE_LINE);
-	_pipelineGridFaceBounds->setToplogy(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+	// _plFaceBounds uses a special solid color shader for the edges. It could be combined with _plEdges if the shader is modified.
+	_plFaceBounds = _app->addPipelineWithSource<VK::Pipeline3D>("grid_face_bounds", "shaders/shader_grid_wireframe_vert.spv", "shaders/shader_grid_wireframe_frag.spv");
+	_plFaceBounds->setPolygonMode(VK_POLYGON_MODE_LINE);
+	_plFaceBounds->setToplogy(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+	_plFaceBounds->setLineWidth(0.25);
 
-	_pipelineTriWire = _app->addPipelineWithSource<VK::Pipeline3D>("model_wireframe", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
-	_pipelineTriWire->setPolygonMode(VK_POLYGON_MODE_LINE);
-	_pipelineTriWire->toggleVisiblity();
+	_plTriWire = _app->addPipelineWithSource<VK::Pipeline3D>("model_wireframe", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
+	_plTriWire->setPolygonMode(VK_POLYGON_MODE_LINE);
+	_plTriWire->toggleVisiblity();
 
-	_pipelineLines = _app->addPipelineWithSource<VK::Pipeline3D>("model_edges", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
-	_pipelineLines->setPolygonMode(VK_POLYGON_MODE_LINE);
-	_pipelineLines->setToplogy(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
-	_pipelineLines->setDepthTestEnabled(false);
-//	_pipelineLines->toggleVisiblity();
+	_plEdges = _app->addPipelineWithSource<VK::Pipeline3D>("model_edges", "shaders/shader_vert.spv", "shaders/shader_wireframe_frag.spv");
+	_plEdges->setPolygonMode(VK_POLYGON_MODE_LINE);
+	_plEdges->setToplogy(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+	_plEdges->setDepthTestEnabled(false);
+//	_plEdges->toggleVisiblity();
 }
 
 Root::~Root() {
@@ -157,26 +160,28 @@ Root::~Root() {
 
 
 void Root::buildUi(const VK::UI::WindowPtr& win) {
-	glm::vec4 bkgColor(0.875f, 0.875f, 0.875f, 1);
+	using namespace glm;
+
+	vec4 bkgColor(0.875f, 0.875f, 0.875f, 1);
 	uint32_t w = 200;
 	uint32_t h = 24;
 	uint32_t row = 0;
 
-	win->addButton(bkgColor, "Reset View", Rect(row, 0, row + h, w))->
+	addViewButtons(win);
+
+	row += h;
+	win->addButton(bkgColor, "Toggle Model", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
-			glm::mat4 xform = glm::mat4(1.0f);
-			_app->setModelToWorldTransform(xform);
+			_models.front()._sceneNodeShaded->toggleVisibility();
 		}
 	});
 
 	row += h;
-	win->addButton(bkgColor, "Toggle model", Rect(row, 0, row + h, w))->
+	win->addButton(bkgColor, "Toggle Model Edges", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
-			if (!_models.empty()) {
-				_models.front()._sceneNodeShaded->toggleVisibility();
-			}
+			_plEdges->toggleVisiblity();
 		}
 	});
 
@@ -184,25 +189,10 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 	win->addButton(bkgColor, "Toggle Shaded", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
-			_pipelineTriShaded->toggleVisiblity();
-		}
-	});
+			_allGridFacesShaded->toggleVisibility();
+			_allGridFaceBounds->toggleVisibility();
 
-	row += h;
-	win->addButton(bkgColor, "Toggle Wireframe", Rect(row, 0, row + h, w))->
-		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
-		if (btnNum == 0) {
-			_pipelineTriWire->toggleVisiblity();
-		}
-	});
-
-	row += h;
-	win->addButton(bkgColor, "Toggle Edges", Rect(row, 0, row + h, w))->
-		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
-		if (btnNum == 0) {
-			if (!_models.empty()) {
-				_pipelineLines->toggleVisiblity();
-			}
+			_allGridEdges->toggleVisibility();
 		}
 	});
 
@@ -229,6 +219,95 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 			_app->stop();
 		}
 	});
+
+}
+
+void Root::addViewButtons(const VK::UI::WindowPtr& win) {
+	using namespace glm;
+
+	vec4 bkgColor(0.875f, 0.875f, 0.875f, 1);
+	uint32_t w = 60;
+	uint32_t h = 24;
+	uint32_t row = 0;
+	uint32_t col = 200;
+
+	win->addButton(bkgColor, "X+", Rect(row, col, row + h, col + w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			mat3 xform = mat3(
+				vec3(1, 0, 0),
+				vec3(0, 1, 0),
+				vec3(0, 0, 1)
+			);
+			_app->setModelToWorldTransform(xform);
+		}
+	});
+
+	col += w;
+	win->addButton(bkgColor, "X-", Rect(row, col, row + h, col + w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			mat3 xform = mat3(
+				vec3(-1, 0, 0),
+				vec3(0, -1, 0),
+				vec3(0, 0, 1)
+			);
+			_app->setModelToWorldTransform(xform);
+		}
+	});
+
+	col += w;
+	win->addButton(bkgColor, "Y+", Rect(row, col, row + h, col + w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			mat3 xform = mat3(
+				vec3(0, 0, 1),
+				vec3(1, 0, 0),
+				vec3(0, 1, 0)
+			);
+			_app->setModelToWorldTransform(xform);
+		}
+	});
+
+	col += w;
+	win->addButton(bkgColor, "Y-", Rect(row, col, row + h, col + w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			mat3 xform = mat3(
+				vec3(0, 0, 1),
+				vec3(-1, 0, 0),
+				vec3(0, -1, 0)
+			);
+			_app->setModelToWorldTransform(xform);
+		}
+	});
+
+	col += w;
+	win->addButton(bkgColor, "Z+", Rect(row, col, row + h, col + w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			mat3 xform = mat3(
+				vec3(0, 1, 0),
+				vec3(0, 0, 1),
+				vec3(1, 0, 0)
+			);
+			_app->setModelToWorldTransform(xform);
+		}
+	});
+
+	col += w;
+	win->addButton(bkgColor, "Z-", Rect(row, col, row + h, col + w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			mat3 xform = mat3(
+				vec3(0, -1, 0),
+				vec3(0, 0, -1),
+				vec3(-1, 0, 0)
+			);
+			_app->setModelToWorldTransform(xform);
+		}
+	});
+
 }
 
 bool Root::run() {
@@ -412,10 +491,10 @@ void Root::addGridFaces() {
 				quadEdges.push_back(tri0[1]);
 				quadEdges.push_back(tri0[2]);
 
+				quadEdges.push_back(tri1[1]);
 				quadEdges.push_back(tri1[2]);
-				quadEdges.push_back(tri1[3]);
 
-				quadEdges.push_back(tri1[3]);
+				quadEdges.push_back(tri1[2]);
 				quadEdges.push_back(tri1[0]);
 			}
 		}
@@ -423,31 +502,29 @@ void Root::addGridFaces() {
 		return true;
 	});
 
-	_allGridTriShaded = make_shared<GridIndexNode>(this, _pipelineTriShaded);
-	_allGridTriShaded->setFaceDrawList(tris);
-	_pipelineTriShaded->addSceneNode(_allGridTriShaded);
+	_allGridFacesShaded = make_shared<GridIndexNode>(this, _plShaded);
+	_allGridFacesShaded->setFaceDrawList(tris);
+	_plShaded->addSceneNode(_allGridFacesShaded);
 
-	_allGridTriWf = make_shared<GridIndexNode>(this, _pipelineTriWire);
-	_allGridTriWf->setFaceDrawList(tris);
-	_pipelineTriWire->addSceneNode(_allGridTriWf);
-
-#if 0
-	_allGridFaceBounds = make_shared<GridIndexNode>(this, _pipelineLines);
+	_allGridFaceBounds = make_shared<GridIndexNode>(this, _plFaceBounds);
 	_allGridFaceBounds->setFaceDrawList(quadEdges);
-	_pipelineLines->addSceneNode(_allGridFaceBounds);
-#endif
+	_plFaceBounds->addSceneNode(_allGridFaceBounds);
 
+	_allGridEdges = make_shared<GridIndexNode>(this, _plEdges);
+	_allGridEdges->setFaceDrawList(quadEdges);
+	_allGridEdges->toggleVisibility();
+	_plEdges->addSceneNode(_allGridEdges);
 }
 
 void Root::reportModelAdded(const CMesher& mesher, const CModelPtr& model) {
-	VK::ModelPtr uiModelShaded = VK::Model::create(_pipelineTriShaded, model);
-	_pipelineTriShaded->addSceneNode(uiModelShaded);
+	VK::ModelPtr uiModelShaded = VK::Model::create(_plShaded, model);
+	_plShaded->addSceneNode(uiModelShaded);
 
-	VK::ModelPtr uiModelWf = VK::Model::create(_pipelineTriWire, model);
-	_pipelineTriWire->addSceneNode(uiModelWf);
+	VK::ModelPtr uiModelWf = VK::Model::create(_plTriWire, model);
+	_plTriWire->addSceneNode(uiModelWf);
 
-	ModelEdgesPtr uiModelEdges = ModelEdges::create(_pipelineLines, model);
-	_pipelineLines->addSceneNode(uiModelEdges);
+	ModelEdgesPtr uiModelEdges = ModelEdges::create(_plEdges, model);
+	_plEdges->addSceneNode(uiModelEdges);
 
 	ModelRec rec = { model, uiModelShaded, uiModelWf, uiModelEdges };
 

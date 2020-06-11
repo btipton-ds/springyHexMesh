@@ -88,6 +88,7 @@ namespace HexahedralMesher {
 			};
 
 			void buildUi(const VK::UI::WindowPtr& win);
+			void addViewButtons(const VK::UI::WindowPtr& win);
 			void buildBuffers();
 			void buildPosNormBuffer(bool buildTopology);
 			void updateVerts();
@@ -106,8 +107,8 @@ namespace HexahedralMesher {
 			CMesherPtr _mesher;
 
 			VK::VulkanAppPtr _app;
-			VK::Pipeline3DPtr _pipelineTriShaded, _pipelineTriWire, _pipelineLines, _pipelineGridFaceBounds;
-			GridIndexNodePtr _allGridTriShaded, _allGridTriWf, _allGridFaceBounds;
+			VK::Pipeline3DPtr _plShaded, _plTriWire, _plEdges, _plFaceBounds;
+			GridIndexNodePtr _allGridFacesShaded, _allGridEdges, _allGridFaceBounds;
 
 			BoundingBox _bbox;
 			size_t _updateBits = STATE_IDLE;
@@ -122,15 +123,15 @@ namespace HexahedralMesher {
 		}
 
 		inline const VK::Pipeline3DPtr& Root::getPipelineTriShaded() const {
-			return _pipelineTriShaded;
+			return _plShaded;
 		}
 
 		inline const VK::Pipeline3DPtr& Root::getPipelineTriWire() const {
-			return _pipelineTriWire;
+			return _plTriWire;
 		}
 
 		inline const VK::Pipeline3DPtr& Root::getPipelineLines() const {
-			return _pipelineLines;
+			return _plEdges;
 		}
 
 		inline const VK::BufferPtr& Root::getPosNormVertBuffer() const {
