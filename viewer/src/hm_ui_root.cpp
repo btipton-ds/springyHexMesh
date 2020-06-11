@@ -218,6 +218,22 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 	});
 
 	row += h;
+	win->addButton(bkgColor, "Toggle C-Cells-2", Rect(row, 0, row + h, w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			_clampedCells2.toggleVisibility();
+		}
+	});
+
+	row += h;
+	win->addButton(bkgColor, "Toggle C-Cells-2 Shaded", Rect(row, 0, row + h, w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			_clampedCells2.toggleMode();
+		}
+	});
+
+	row += h;
 	win->addButton(bkgColor, "Screenshot", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
@@ -390,11 +406,13 @@ void Root::buildBuffers() {
 
 	clear(_allCells);
 	clear(_clampedCells1);
+	clear(_clampedCells2);
 
 	buildPosNormBuffer(true);
 	addGridFaces();
 
-	addClampedCells();
+	addClampedCells1();
+	addClampedCells2();
 }
 
 void Root::clear(GridDrawSet& gds) {
@@ -407,23 +425,38 @@ void Root::clear(GridDrawSet& gds) {
 	gds._edges = nullptr;
 }
 
-void Root::addClampedCells() {
+void Root::addClampedCells1() {
 	const auto& grid = *_mesher->getGrid();
 	Dump dump(grid);
 
-	{
-		vector<size_t> cellIds;
-		dump.gatherClampedCells(1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI, cellIds);
+	vector<size_t> cellIds;
+	dump.gatherClampedCells(1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI, cellIds);
 
-		vector<uint32_t> tris;
-		vector<uint32_t> quadEdges;
+	vector<uint32_t> tris;
+	vector<uint32_t> quadEdges;
 
-		for (size_t cellId : cellIds) {
-			addCellToDrawLists(cellId, tris, quadEdges);
-		}
-
-		create(_clampedCells1, tris, quadEdges);
+	for (size_t cellId : cellIds) {
+		addCellToDrawLists(cellId, tris, quadEdges);
 	}
+
+	create(_clampedCells1, tris, quadEdges);
+}
+
+void Root::addClampedCells2() {
+	const auto& grid = *_mesher->getGrid();
+	Dump dump(grid);
+
+	vector<size_t> cellIds;
+	dump.gatherClampedCells(2, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI, cellIds);
+
+	vector<uint32_t> tris;
+	vector<uint32_t> quadEdges;
+
+	for (size_t cellId : cellIds) {
+		addCellToDrawLists(cellId, tris, quadEdges);
+	}
+
+	create(_clampedCells2, tris, quadEdges);
 }
 
 void Root::create(GridDrawSet& gds, const std::vector<uint32_t>& tris, const std::vector<uint32_t>& edges) {
@@ -611,4 +644,37 @@ void Root::reportModelAdded(const CMesher& mesher, const CModelPtr& model) {
 
 bool Root::isRunning() const {
 	return _isRunning;
+}
+
+
+inline void Root::GridFaceSet::setVisibility(bool visible) {
+	_tris->setVisibility(visible);
+	_bounds->setVisibility(visible);
+}
+
+inline void Root::GridDrawSet::toggleVisibility() {
+	if (_visible) {
+		_shaded.setVisibility(false);
+		_edges->setVisibility(false);
+	}
+	else {
+		_shaded.setVisibility(_drawShaded);
+		_edges->setVisibility(!_drawShaded);
+	}
+	_visible = !_visible;
+}
+
+inline void Root::GridDrawSet::toggleMode() {
+	if (_visible) {
+		_drawShaded = !_drawShaded;
+
+		_shaded._tris->toggleVisibility();
+		_shaded._bounds->toggleVisibility();
+		_edges->toggleVisibility();
+	}
+}
+
+inline void Root::GridDrawSet::restoreVisibility() {
+	_shaded.setVisibility(_visible && _drawShaded);
+	_edges->setVisibility(_visible && !_drawShaded);
 }

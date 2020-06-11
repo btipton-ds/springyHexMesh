@@ -112,7 +112,8 @@ namespace HexahedralMesher {
 			void buildPosNormBuffer(bool buildTopology);
 			void updateVerts();
 			void addGridFaces();
-			void addClampedCells();
+			void addClampedCells1();
+			void addClampedCells2();
 			void waitTillClear(size_t bits) const;
 			void setState(size_t bits);
 
@@ -128,7 +129,7 @@ namespace HexahedralMesher {
 
 			VK::VulkanAppPtr _app;
 			VK::Pipeline3DPtr _plShaded, _plTriWire, _plEdges, _plFaceBounds;
-			GridDrawSet _allCells, _clampedCells1;
+			GridDrawSet _allCells, _clampedCells1, _clampedCells2;
 
 			BoundingBox _bbox;
 			size_t _updateBits = STATE_IDLE;
@@ -160,38 +161,6 @@ namespace HexahedralMesher {
 
 		inline const Root::BoundingBox& Root::getBounds() const {
 			return _bbox;
-		}
-
-		inline void Root::GridFaceSet::setVisibility(bool visible) {
-			_tris->setVisibility(visible);
-			_bounds->setVisibility(visible);
-		}
-
-		inline void Root::GridDrawSet::toggleVisibility() {
-			if (_visible) {
-				_shaded.setVisibility(false);
-				_edges->setVisibility(false);
-			}
-			else {
-				_shaded.setVisibility(_drawShaded);
-				_edges->setVisibility(!_drawShaded);
-			}
-			_visible = !_visible;
-		}
-
-		inline void Root::GridDrawSet::toggleMode() {
-			if (_visible) {
-				_drawShaded = !_drawShaded;
-
-				_shaded._tris->toggleVisibility();
-				_shaded._bounds->toggleVisibility();
-				_edges->toggleVisibility();
-			}
-		}
-
-		inline void Root::GridDrawSet::restoreVisibility() {
-			_shaded.setVisibility(_visible && _drawShaded);
-			_edges->setVisibility(_visible && !_drawShaded);
 		}
 
 	}

@@ -727,7 +727,7 @@ void CMesher::putCornersOnSharpEdges() {
 	_dumpObj.write("alignedMeshPreSplitPreMinReduced", 1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI);
 #endif
 
-	minimizeMesh(25, -1);
+	minimizeMesh(50, -1);
 
 #if DUMP_OBJ
 	_dumpObj.write("alignedMeshPostSplitPreMin");
@@ -827,7 +827,7 @@ ErrorCode CMesher::run() {
 				}
 				_reporter->report(*this, "grid_topol_change");
 //				return NO_ERR;
-				minimizeMesh(50, -1);
+				minimizeMesh(75, -1);
 
 #if DUMP_OBJ
 				_dumpObj.write("preFit", 0);
@@ -855,7 +855,7 @@ ErrorCode CMesher::run() {
 		_reporter->report(*this, "grid_topol_change");
 
 		GridVert::clearHistory();
-		minimizeMesh(25, -1);
+		minimizeMesh(75, -1);
 		GridVert::writeHistory(savePath + "vertHistory.csv");
 
 #if DUMP_OBJ
