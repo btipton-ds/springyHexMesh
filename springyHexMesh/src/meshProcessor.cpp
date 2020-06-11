@@ -444,7 +444,7 @@ void CMesher::minimizeMesh(int steps, int energyMask, const string& filename) {
 
 	ofstream logOut(savePath + "opt_log.csv");
 
-	const int numThreads = 1;
+	const int numThreads = 4;
 	for (int i = 0; i < steps; i++) {
 		checkStop();
 		double maxMoveArr[numThreads], avgMoveArr[numThreads];

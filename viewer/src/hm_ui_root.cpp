@@ -246,22 +246,41 @@ bool Root::run() {
 	return true;
 }
 
+inline void Root::waitTillClear(size_t bits) const {
+	while (_updateBits & bits) {
+		this_thread::sleep_for(chrono::milliseconds(100));
+	}
+}
+
+inline void Root::setState(size_t bits) {
+	_updateBits |= STATE_PENDING | bits;
+	waitTillClear(STATE_PENDING);
+}
+
 void Root::report(const CMesher& mesher, const std::string& key) {
-	_updateBits = 0;
+	waitTillClear(STATE_WORKING);
+
 	if (key == "grid_topol_change") {
-		_updateBits |= 1;
+		setState(STATE_TOPOL_CHANGED);
 	} else if (key == "grid_verts_changed") {
-		_updateBits |= 2;
+		setState(STATE_VERTS_UDATED);
 	}
 }
 
 void Root::updateVkApp() {
-	if (_updateBits & 1) {
+	if (_updateBits & STATE_TOPOL_CHANGED) {
+		_updateBits = STATE_WORKING;
+
 		buildBuffers();
-	} else if (_updateBits & 2) {
+
+		_updateBits = STATE_IDLE;
+	} else if (_updateBits & STATE_VERTS_UDATED) {
+		_updateBits = STATE_WORKING;
+
 		updateVerts();
+
+		_updateBits = STATE_IDLE;
 	}
-	_updateBits = 0;
 }
 
 void Root::buildBuffers() {

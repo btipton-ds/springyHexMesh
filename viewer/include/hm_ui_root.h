@@ -79,11 +79,21 @@ namespace HexahedralMesher {
 			inline const BoundingBox& getBounds() const;
 
 		private:
+			enum State {
+				STATE_IDLE = 0,
+				STATE_PENDING = 1,
+				STATE_WORKING = 2,
+				STATE_TOPOL_CHANGED = 4,
+				STATE_VERTS_UDATED = 8,
+			};
+
 			void buildUi(const VK::UI::WindowPtr& win);
 			void buildBuffers();
 			void buildPosNormBuffer(bool buildTopology);
 			void updateVerts();
 			void addGridFaces();
+			void waitTillClear(size_t bits) const;
+			void setState(size_t bits);
 
 			bool _isRunning = true;
 
@@ -100,7 +110,7 @@ namespace HexahedralMesher {
 			GridIndexNodePtr _allGridTriShaded, _allGridTriWf, _allGridFaceBounds;
 
 			BoundingBox _bbox;
-			size_t _updateBits = 0;
+			size_t _updateBits = STATE_IDLE;
 			std::vector<std::array<uint32_t, 3>> _tris;
 			std::map<SearchableFace, std::array<size_t, 2>> _faceToTriMap;
 			VK::BufferPtr _posNormVertBuffer; // Vertex buffer with normals for each tri direction
