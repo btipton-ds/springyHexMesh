@@ -66,7 +66,7 @@ int main(int numArgs, char** args)
 	params.bounds.clear();
 	params.bounds.merge(Vector3d(-2, 0, 0));
 	params.bounds.merge(Vector3d(6, 6, 16));
-	params.maxEdgeLength = 1;
+	params.maxEdgeLength = 0.5;
 	params.minEdgeLength = 0.1;
 	params.sharpAngleDeg = 45.0;
 
@@ -77,7 +77,7 @@ int main(int numArgs, char** args)
 	uiRoot->getApp()->setUpdater(uiRoot);
 	mesher->setReporter(uiRoot);
 
-	bool fine = false;
+	bool fine = true;
 	if (!mesher->addFile(downloads, fine ? "Spinnaker Slots 5 - Fine.stl" : "Spinnaker Slots 5 - Coarse.stl"))
 		return 1;
 

@@ -388,10 +388,23 @@ void Root::buildBuffers() {
 	if (grid.numCells() == 0)
 		return;
 
+	clear(_allCells);
+	clear(_clampedCells1);
+
 	buildPosNormBuffer(true);
 	addGridFaces();
 
 	addClampedCells();
+}
+
+void Root::clear(GridDrawSet& gds) {
+	_plShaded->removeSceneNode(gds._shaded._tris);
+	_plFaceBounds->removeSceneNode(gds._shaded._bounds);
+	_plEdges->removeSceneNode(gds._edges);
+
+	gds._shaded._tris = nullptr;
+	gds._shaded._bounds = nullptr;
+	gds._edges = nullptr;
 }
 
 void Root::addClampedCells() {
@@ -437,6 +450,7 @@ void Root::buildPosNormBuffer(bool buildTopology) {
 	if (buildTopology) {
 		_tris.clear();
 		_faceToTriMap.clear();
+		_posNormVertBuffer = nullptr;
 	}
 
 	vector<VK::Vertex3_PNCf> verts;

@@ -88,40 +88,15 @@ namespace HexahedralMesher {
 			};
 
 			struct GridFaceSet {
-				inline void setVisibility(bool visible) {
-					_tris->setVisibility(visible);
-					_bounds->setVisibility(visible);
-				}
+				void setVisibility(bool visible);
+
 				GridIndexNodePtr _tris, _bounds;
 			};
 
 			struct GridDrawSet {
-
-				inline void toggleVisibility() {
-					if (_visible) {
-						_shaded.setVisibility(false);
-						_edges->setVisibility(false);
-					} else {
-						_shaded.setVisibility(_drawShaded);
-						_edges->setVisibility(!_drawShaded);
-					}
-					_visible = !_visible;
-				}
-
-				inline void toggleMode() {
-					if (_visible) {
-						_drawShaded = !_drawShaded;
-
-						_shaded._tris->toggleVisibility();
-						_shaded._bounds->toggleVisibility();
-						_edges->toggleVisibility();
-					}
-				}
-
-				inline void restoreVisibility() {
-					_shaded.setVisibility(_visible && _drawShaded);
-					_edges->setVisibility(_visible && !_drawShaded);
-				}
+				void toggleVisibility();
+				void toggleMode();
+				void restoreVisibility();
 
 				bool _visible = true, _drawShaded = true;
 				GridFaceSet _shaded;
@@ -130,6 +105,7 @@ namespace HexahedralMesher {
 
 			void addCellToDrawLists(size_t cellId, vector<uint32_t>& tris, vector<uint32_t>& quadEdges);
 			void create(GridDrawSet& gds, const std::vector<uint32_t>& tris, const std::vector<uint32_t>& edges);
+			void clear(GridDrawSet& gds);
 			void buildUi(const VK::UI::WindowPtr& win);
 			void addViewButtons(const VK::UI::WindowPtr& win);
 			void buildBuffers();
@@ -184,6 +160,38 @@ namespace HexahedralMesher {
 
 		inline const Root::BoundingBox& Root::getBounds() const {
 			return _bbox;
+		}
+
+		inline void Root::GridFaceSet::setVisibility(bool visible) {
+			_tris->setVisibility(visible);
+			_bounds->setVisibility(visible);
+		}
+
+		inline void Root::GridDrawSet::toggleVisibility() {
+			if (_visible) {
+				_shaded.setVisibility(false);
+				_edges->setVisibility(false);
+			}
+			else {
+				_shaded.setVisibility(_drawShaded);
+				_edges->setVisibility(!_drawShaded);
+			}
+			_visible = !_visible;
+		}
+
+		inline void Root::GridDrawSet::toggleMode() {
+			if (_visible) {
+				_drawShaded = !_drawShaded;
+
+				_shaded._tris->toggleVisibility();
+				_shaded._bounds->toggleVisibility();
+				_edges->toggleVisibility();
+			}
+		}
+
+		inline void Root::GridDrawSet::restoreVisibility() {
+			_shaded.setVisibility(_visible && _drawShaded);
+			_edges->setVisibility(_visible && !_drawShaded);
 		}
 
 	}
