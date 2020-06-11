@@ -186,13 +186,34 @@ void Root::buildUi(const VK::UI::WindowPtr& win) {
 	});
 
 	row += h;
-	win->addButton(bkgColor, "Toggle Shaded", Rect(row, 0, row + h, w))->
+	win->addButton(bkgColor, "Toggle Grid", Rect(row, 0, row + h, w))->
 		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
 		if (btnNum == 0) {
-			_allGridFacesShaded->toggleVisibility();
-			_allGridFaceBounds->toggleVisibility();
+			_allCells.toggleVisibility();
+		}
+	});
 
-			_allGridEdges->toggleVisibility();
+	row += h;
+	win->addButton(bkgColor, "Toggle Grid Shaded", Rect(row, 0, row + h, w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			_allCells.toggleMode();
+		}
+	});
+
+	row += h;
+	win->addButton(bkgColor, "Toggle C-Cells-1", Rect(row, 0, row + h, w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			_clampedCells1.toggleVisibility();
+		}
+	});
+
+	row += h;
+	win->addButton(bkgColor, "Toggle C-Cells-1 Shaded", Rect(row, 0, row + h, w))->
+		setAction(Button::ActionType::ACT_CLICK, [&](int btnNum, int modifiers) {
+		if (btnNum == 0) {
+			_clampedCells1.toggleMode();
 		}
 	});
 
@@ -369,6 +390,43 @@ void Root::buildBuffers() {
 
 	buildPosNormBuffer(true);
 	addGridFaces();
+
+	addClampedCells();
+}
+
+void Root::addClampedCells() {
+	const auto& grid = *_mesher->getGrid();
+	Dump dump(grid);
+
+	{
+		vector<size_t> cellIds;
+		dump.gatherClampedCells(1, CLAMP_VERT | CLAMP_EDGE | CLAMP_TRI, cellIds);
+
+		vector<uint32_t> tris;
+		vector<uint32_t> quadEdges;
+
+		for (size_t cellId : cellIds) {
+			addCellToDrawLists(cellId, tris, quadEdges);
+		}
+
+		create(_clampedCells1, tris, quadEdges);
+	}
+}
+
+void Root::create(GridDrawSet& gds, const std::vector<uint32_t>& tris, const std::vector<uint32_t>& edges) {
+	gds._shaded._tris = make_shared<GridIndexNode>(this, _plShaded);
+	gds._shaded._tris->setFaceDrawList(tris);
+	_plShaded->addSceneNode(gds._shaded._tris);
+
+	gds._shaded._bounds = make_shared<GridIndexNode>(this, _plFaceBounds);
+	gds._shaded._bounds->setFaceDrawList(edges);
+	_plFaceBounds->addSceneNode(gds._shaded._bounds);
+
+	gds._edges = make_shared<GridIndexNode>(this, _plEdges);
+	gds._edges->setFaceDrawList(edges);
+	gds._edges->toggleVisibility();
+	_plEdges->addSceneNode(gds._edges);
+
 }
 
 void Root::buildPosNormBuffer(bool buildTopology) {
@@ -463,61 +521,67 @@ void Root::updateVerts() {
 	buildPosNormBuffer(false);
 }
 
+void Root::addCellToDrawLists(size_t cellId, vector<uint32_t>& tris, vector<uint32_t>& quadEdges) {
+	const Grid& grid = *_mesher->getGrid();
+	const auto& cell = grid.getCell(cellId);
+	for (FaceNumber fn = BOTTOM; fn < FN_UNKNOWN; fn++) {
+		SearchableFace sf(cell.getSearchableFace(fn));
+		auto iter = _faceToTriMap.find(sf);
+		if (iter != _faceToTriMap.end()) {
+			const auto& triPair = iter->second;
+			const auto& tri0 = _tris[triPair[0]];
+			const auto& tri1 = _tris[triPair[1]];
+			for (size_t idx : tri0) {
+				tris.push_back((uint32_t)idx);
+			}
+			for (size_t idx : tri1) {
+				tris.push_back((uint32_t)idx);
+			}
+
+			quadEdges.push_back(tri0[0]);
+			quadEdges.push_back(tri0[1]);
+
+			quadEdges.push_back(tri0[1]);
+			quadEdges.push_back(tri0[2]);
+
+			quadEdges.push_back(tri1[1]);
+			quadEdges.push_back(tri1[2]);
+
+			quadEdges.push_back(tri1[2]);
+			quadEdges.push_back(tri1[0]);
+		}
+	}
+}
+
+
 void Root::addGridFaces() {
 	vector<uint32_t> tris;
 	vector<uint32_t> quadEdges;
 
-	const auto& grid = *_mesher->getGrid();
+	const Grid& grid = *_mesher->getGrid();
 
 	grid.iterateCells([&](size_t cellId)->bool { 
-		const auto& cell = grid.getCell(cellId);
-		for (FaceNumber fn = BOTTOM; fn < FN_UNKNOWN; fn++) {
-			SearchableFace sf(cell.getSearchableFace(fn));
-			auto iter = _faceToTriMap.find(sf);
-			if (iter != _faceToTriMap.end()) {
-				const auto& triPair = iter->second;
-				const auto& tri0 = _tris[triPair[0]];
-				const auto& tri1 = _tris[triPair[1]];
-				for (size_t idx : tri0) {
-					tris.push_back((uint32_t)idx);
-				}
-				for (size_t idx : tri1) {
-					tris.push_back((uint32_t)idx);
-				}
-
-				quadEdges.push_back(tri0[0]);
-				quadEdges.push_back(tri0[1]);
-
-				quadEdges.push_back(tri0[1]);
-				quadEdges.push_back(tri0[2]);
-
-				quadEdges.push_back(tri1[1]);
-				quadEdges.push_back(tri1[2]);
-
-				quadEdges.push_back(tri1[2]);
-				quadEdges.push_back(tri1[0]);
-			}
-		}
-
+		addCellToDrawLists(cellId, tris, quadEdges);
 		return true;
 	});
 
-	_allGridFacesShaded = make_shared<GridIndexNode>(this, _plShaded);
-	_allGridFacesShaded->setFaceDrawList(tris);
-	_plShaded->addSceneNode(_allGridFacesShaded);
+	_allCells._shaded._tris = make_shared<GridIndexNode>(this, _plShaded);
+	_allCells._shaded._tris->setFaceDrawList(tris);
+	_plShaded->addSceneNode(_allCells._shaded._tris);
 
-	_allGridFaceBounds = make_shared<GridIndexNode>(this, _plFaceBounds);
-	_allGridFaceBounds->setFaceDrawList(quadEdges);
-	_plFaceBounds->addSceneNode(_allGridFaceBounds);
+	_allCells._shaded._bounds = make_shared<GridIndexNode>(this, _plFaceBounds);
+	_allCells._shaded._bounds->setFaceDrawList(quadEdges);
+	_plFaceBounds->addSceneNode(_allCells._shaded._bounds);
 
-	_allGridEdges = make_shared<GridIndexNode>(this, _plEdges);
-	_allGridEdges->setFaceDrawList(quadEdges);
-	_allGridEdges->toggleVisibility();
-	_plEdges->addSceneNode(_allGridEdges);
+	_allCells._edges = make_shared<GridIndexNode>(this, _plEdges);
+	_allCells._edges->setFaceDrawList(quadEdges);
+	_plEdges->addSceneNode(_allCells._edges);
+
+	_allCells.restoreVisibility();
 }
 
 void Root::reportModelAdded(const CMesher& mesher, const CModelPtr& model) {
-	VK::ModelPtr uiModelShaded = VK::Model::create(_plShaded, model);
+	VK::ModelPtr uiModelShaded = VK::Model::create(_plShaded, model, glm::vec3(0.5f, 0.5f, 0.75f));
 	_plShaded->addSceneNode(uiModelShaded);
 
 	VK::ModelPtr uiModelWf = VK::Model::create(_plTriWire, model);

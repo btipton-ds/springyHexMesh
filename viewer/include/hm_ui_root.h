@@ -87,12 +87,56 @@ namespace HexahedralMesher {
 				STATE_VERTS_UDATED = 8,
 			};
 
+			struct GridFaceSet {
+				inline void setVisibility(bool visible) {
+					_tris->setVisibility(visible);
+					_bounds->setVisibility(visible);
+				}
+				GridIndexNodePtr _tris, _bounds;
+			};
+
+			struct GridDrawSet {
+
+				inline void toggleVisibility() {
+					if (_visible) {
+						_shaded.setVisibility(false);
+						_edges->setVisibility(false);
+					} else {
+						_shaded.setVisibility(_drawShaded);
+						_edges->setVisibility(!_drawShaded);
+					}
+					_visible = !_visible;
+				}
+
+				inline void toggleMode() {
+					if (_visible) {
+						_drawShaded = !_drawShaded;
+
+						_shaded._tris->toggleVisibility();
+						_shaded._bounds->toggleVisibility();
+						_edges->toggleVisibility();
+					}
+				}
+
+				inline void restoreVisibility() {
+					_shaded.setVisibility(_visible && _drawShaded);
+					_edges->setVisibility(_visible && !_drawShaded);
+				}
+
+				bool _visible = true, _drawShaded = true;
+				GridFaceSet _shaded;
+				GridIndexNodePtr _edges;
+			};
+
+			void addCellToDrawLists(size_t cellId, vector<uint32_t>& tris, vector<uint32_t>& quadEdges);
+			void create(GridDrawSet& gds, const std::vector<uint32_t>& tris, const std::vector<uint32_t>& edges);
 			void buildUi(const VK::UI::WindowPtr& win);
 			void addViewButtons(const VK::UI::WindowPtr& win);
 			void buildBuffers();
 			void buildPosNormBuffer(bool buildTopology);
 			void updateVerts();
 			void addGridFaces();
+			void addClampedCells();
 			void waitTillClear(size_t bits) const;
 			void setState(size_t bits);
 
@@ -108,7 +152,7 @@ namespace HexahedralMesher {
 
 			VK::VulkanAppPtr _app;
 			VK::Pipeline3DPtr _plShaded, _plTriWire, _plEdges, _plFaceBounds;
-			GridIndexNodePtr _allGridFacesShaded, _allGridEdges, _allGridFaceBounds;
+			GridDrawSet _allCells, _clampedCells1;
 
 			BoundingBox _bbox;
 			size_t _updateBits = STATE_IDLE;

@@ -820,7 +820,7 @@ ErrorCode CMesher::run() {
 	try {
 		init();
 
-		if (!read(savePath + "postFit.grid")) {
+		if (true || !read(savePath + "postFit.grid")) {
 			if (!read(savePath + "preFit.grid")) {
 				if (!read(savePath + "initial.grid")) {
 					makeInitialGrid();
@@ -866,7 +866,7 @@ ErrorCode CMesher::run() {
 		_dumpObj.writeFaces("alignedFacesMinReduced2", 2, CLAMP_VERT | CLAMP_EDGE);
 #endif
 
-		divideMesh(1);
+//		divideMesh(1);
 
 	}
 	catch (StopException) {
