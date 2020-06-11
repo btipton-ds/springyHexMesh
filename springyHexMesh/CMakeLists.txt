@@ -48,7 +48,7 @@ springyHexMeshLib
 	"src/hm_model.cpp"   
 	"src/hm_polylineFitter.cpp" 
 	"src/hm_gridCellEnergy.cpp" 
-	"src/hm_dumpObj.cpp" 
+	"src/hm_dump.cpp" 
 	"src/hm_gridFace.cpp" 
 	"src/hm_splitter.cpp" 
 	"src/hm_grid.cpp" 

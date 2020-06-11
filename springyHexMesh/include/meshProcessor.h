@@ -57,7 +57,7 @@ All rights reserved
 #include <hm_gridFace.h>
 #include <hm_gridCell.h>
 #include <hm_grid.h>
-#include <hm_dumpObj.h>
+#include <hm_dump.h>
 
 using namespace std;
 
@@ -158,7 +158,7 @@ namespace HexahedralMesher {
 		ParamsRec _params;
 		ReporterPtr _reporter;
 		GridPtr _grid;
-		DumpObj _dumpObj;
+		Dump _dumpObj;
 		std::vector<CModelPtr> _modelPtrs;
 	};
 

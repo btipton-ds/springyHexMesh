@@ -31,7 +31,7 @@ This file is part of the SpringHexMesh Project.
 
 #include <hm_polylineFitter.h>
 #include <meshProcessor.h>
-#include <hm_dumpObj.h>
+#include <hm_dump.h>
 
 namespace HexahedralMesher {
 

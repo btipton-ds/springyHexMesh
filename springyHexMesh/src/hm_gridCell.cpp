@@ -41,7 +41,7 @@ This file is part of the SpringHexMesh Project.
 #include <hm_gridEdge.h>
 #include <hm_grid.h>
 #include <hm_tables.h>
-#include <hm_dumpObj.h>
+#include <hm_dump.h>
 
 namespace HexahedralMesher {
 
